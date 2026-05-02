@@ -3,14 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { modules } from "../config/modules";
+import { mockUser } from "../config/mockUser";
 
 export default function Sidebar() {
   const pathname = usePathname();
 
+  const visibleModules = modules.filter((module) =>
+    mockUser.enabledModules.includes(module.id)
+  );
+
   const grouped = {
-    core: modules.filter((m) => m.type === "core"),
-    feature: modules.filter((m) => m.type === "feature"),
-    admin: modules.filter((m) => m.type === "admin"),
+    core: visibleModules.filter((m) => m.type === "core"),
+    feature: visibleModules.filter((m) => m.type === "feature"),
+    admin: visibleModules.filter((m) => m.type === "admin"),
   };
 
   const renderItem = (item: any) => {
@@ -40,20 +45,26 @@ export default function Sidebar() {
 
       <nav className="p-4">
         <div className="space-y-6">
-          <div>
-            <div className="mb-2 text-xs text-slate-500">Core</div>
-            {grouped.core.map(renderItem)}
-          </div>
+          {grouped.core.length > 0 && (
+            <div>
+              <div className="mb-2 text-xs text-slate-500">Core</div>
+              {grouped.core.map(renderItem)}
+            </div>
+          )}
 
-          <div>
-            <div className="mb-2 text-xs text-slate-500">Modules</div>
-            {grouped.feature.map(renderItem)}
-          </div>
+          {grouped.feature.length > 0 && (
+            <div>
+              <div className="mb-2 text-xs text-slate-500">Modules</div>
+              {grouped.feature.map(renderItem)}
+            </div>
+          )}
 
-          <div>
-            <div className="mb-2 text-xs text-slate-500">Admin</div>
-            {grouped.admin.map(renderItem)}
-          </div>
+          {grouped.admin.length > 0 && (
+            <div>
+              <div className="mb-2 text-xs text-slate-500">Admin</div>
+              {grouped.admin.map(renderItem)}
+            </div>
+          )}
         </div>
       </nav>
     </aside>

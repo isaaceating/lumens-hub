@@ -1,11 +1,34 @@
+"use client";
+
 import Link from "next/link";
 import { modules } from "../config/modules";
+import { mockUser } from "../config/mockUser";
+import { signInWithGoogle, logout } from "@/lib/auth";
 
 export default function DashboardPage() {
-  const visibleModules = modules.filter((module) => module.showOnDashboard);
+  const visibleModules = modules.filter(
+    (module) =>
+      module.showOnDashboard && mockUser.enabledModules.includes(module.id)
+  );
 
   return (
     <div>
+      <div className="mb-6 flex gap-3">
+        <button
+          onClick={signInWithGoogle}
+          className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+        >
+          Login with Google
+        </button>
+
+        <button
+          onClick={logout}
+          className="rounded-lg bg-slate-600 px-4 py-2 text-white hover:bg-slate-700"
+        >
+          Logout
+        </button>
+      </div>
+
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
         <p className="mt-2 text-slate-600">
