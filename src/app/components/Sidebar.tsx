@@ -3,14 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { modules } from "../config/modules";
-import { mockUser } from "../config/mockUser";
+import { useUserProfile } from "@/lib/useUserProfile";
 
 export default function Sidebar() {
   const pathname = usePathname();
 
-  const visibleModules = modules.filter((module) =>
-    mockUser.enabledModules.includes(module.id)
-  );
+  const { profile, loading } = useUserProfile();
+
+  const enabledModules = profile?.enabledModules || [];
+
+  const visibleModules = loading
+    ? []
+    : modules.filter((module) => enabledModules.includes(module.id));
 
   const grouped = {
     core: visibleModules.filter((m) => m.type === "core"),

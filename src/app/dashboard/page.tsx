@@ -1,44 +1,37 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { modules } from "../config/modules";
-import { mockUser } from "../config/mockUser";
 import { signInWithGoogle, logout } from "@/lib/auth";
-import { useEffect } from "react";
-import { onUserChange } from "@/lib/auth";
+import { useUserProfile } from "@/lib/useUserProfile";
 
 export default function DashboardPage() {
-  const [user, setUser] = useState(null);
+  const { user, profile, loading } = useUserProfile();
 
-  useEffect(() => {
-    const unsubscribe = onUserChange((user) => {
-      setUser(user);
-    });
-
-    return () => unsubscribe();
-  }, []);
+  const enabledModules = profile?.enabledModules || [];
 
   const visibleModules = modules.filter(
     (module) =>
-      module.showOnDashboard && mockUser.enabledModules.includes(module.id)
+      module.showOnDashboard && enabledModules.includes(module.id)
   );
 
   return (
     <div>
-      <div className="mb-6 flex gap-3">
-        {user && (
-        <div className="ml-4 text-sm text-slate-700">
-          <div>Hi {user.displayName} 👋</div>
-          <div className="text-slate-500">{user.email}</div>
-        </div>
+      <div className="mb-6 flex items-center gap-3">
+        {loading ? (
+          <div className="text-sm text-slate-500">Loading user...</div>
+        ) : user ? (
+          <div className="text-sm text-slate-700">
+            <div>Hi {user.displayName} 👋</div>
+            <div className="text-slate-500">{user.email}</div>
+          </div>
+        ) : (
+          <div className="text-sm text-slate-500">Not signed in</div>
         )}
+
         <button
-          onClick={async () => {
-            const u = await signInWithGoogle();
-            setUser(u);
-          }}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-white"
+          onClick={signInWithGoogle}
+          className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
         >
           Login with Google
         </button>
