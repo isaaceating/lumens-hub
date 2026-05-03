@@ -12,9 +12,15 @@ export default function Sidebar() {
 
   const enabledModules = profile?.enabledModules || [];
 
-  const visibleModules = loading
-    ? []
-    : modules.filter((module) => enabledModules.includes(module.id));
+const visibleModules = loading
+  ? []
+  : modules.filter((module) => {
+      if (module.type === "admin") {
+        return profile?.role === "admin" && enabledModules.includes(module.id);
+      }
+
+      return enabledModules.includes(module.id);
+    });
 
   const grouped = {
     core: visibleModules.filter((m) => m.type === "core"),

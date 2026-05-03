@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getAllUsers } from "@/lib/users";
 import { updateUserModules } from "@/lib/users";
+import AdminGuard from "@/app/components/AdminGuard";
 
 const ALL_MODULES = [
   "dashboard",
@@ -32,6 +33,7 @@ export default function AdminUsersPage() {
   }, []);
 
   return (
+    <AdminGuard>
     <div>
       <h1 className="mb-6 text-2xl font-bold">User Management</h1>
 
@@ -91,5 +93,6 @@ export default function AdminUsersPage() {
         })}
       </div>
     </div>
+  </AdminGuard>
   );
 }
