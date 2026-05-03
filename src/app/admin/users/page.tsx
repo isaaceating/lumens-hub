@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { getAllUsers } from "@/lib/users";
+import { updateUserModules } from "@/lib/users";
+
+const ALL_MODULES = [
+  "dashboard",
+  "training",
+  "admin",
+  "users",
+  "modules",
+];
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -27,22 +36,59 @@ export default function AdminUsersPage() {
       <h1 className="mb-6 text-2xl font-bold">User Management</h1>
 
       <div className="space-y-4">
-        {users.map((user, index) => (
-          <div
-            key={index}
-            className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-          >
-            <div className="font-semibold text-slate-900">
-              {user.name || "No Name"}
-            </div>
+        {users.map((user, index) => {
+          const currentModules = user.enabledModules || [];
 
-            <div className="text-sm text-slate-500">{user.email}</div>
+          const toggleModule = async (moduleId: string) => {
+            let newModules;
 
-            <div className="mt-2 text-xs text-slate-400">
-              role: {user.role}
+            if (currentModules.includes(moduleId)) {
+              newModules = currentModules.filter((m: string) => m !== moduleId);
+            } else {
+              newModules = [...currentModules, moduleId];
+            }
+
+            await updateUserModules(user.uid, newModules);
+
+            // 👉 立即更新 UI
+            setUsers((prev) =>
+              prev.map((u) =>
+                u.uid === user.uid ? { ...u, enabledModules: newModules } : u
+              )
+            );
+          };
+
+          return (
+            <div
+              key={index}
+              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+            >
+              <div className="font-semibold text-slate-900">
+                {user.name || "No Name"}
+              </div>
+
+              <div className="text-sm text-slate-500">{user.email}</div>
+
+              <div className="mt-2 text-xs text-slate-400">
+                role: {user.role}
+              </div>
+
+              {/* 👉 模組控制 */}
+              <div className="mt-4 space-y-2">
+                {ALL_MODULES.map((moduleId) => (
+                  <label key={moduleId} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={currentModules.includes(moduleId)}
+                      onChange={() => toggleModule(moduleId)}
+                    />
+                    {moduleId}
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
