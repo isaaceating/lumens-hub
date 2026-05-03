@@ -1,11 +1,24 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { modules } from "../config/modules";
 import { mockUser } from "../config/mockUser";
 import { signInWithGoogle, logout } from "@/lib/auth";
+import { useEffect } from "react";
+import { onUserChange } from "@/lib/auth";
 
 export default function DashboardPage() {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const unsubscribe = onUserChange((user) => {
+      setUser(user);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const visibleModules = modules.filter(
     (module) =>
       module.showOnDashboard && mockUser.enabledModules.includes(module.id)
@@ -14,9 +27,18 @@ export default function DashboardPage() {
   return (
     <div>
       <div className="mb-6 flex gap-3">
+        {user && (
+        <div className="ml-4 text-sm text-slate-700">
+          <div>Hi {user.displayName} 👋</div>
+          <div className="text-slate-500">{user.email}</div>
+        </div>
+        )}
         <button
-          onClick={signInWithGoogle}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+          onClick={async () => {
+            const u = await signInWithGoogle();
+            setUser(u);
+          }}
+          className="rounded-lg bg-blue-600 px-4 py-2 text-white"
         >
           Login with Google
         </button>

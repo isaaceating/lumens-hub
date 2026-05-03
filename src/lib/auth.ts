@@ -13,7 +13,6 @@ const provider = new GoogleAuthProvider();
 export const signInWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, provider);
-    console.log("Login success:", result.user);
     return result.user;
   } catch (error) {
     console.error("Login error:", error);
@@ -23,4 +22,11 @@ export const signInWithGoogle = async () => {
 // 👉 登出
 export const logout = async () => {
   await signOut(auth);
+};
+
+import { onAuthStateChanged } from "firebase/auth";
+
+export const onUserChange = (callback: any) => {
+  const auth = getAuth(app);
+  return onAuthStateChanged(auth, callback);
 };
