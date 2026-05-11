@@ -36,3 +36,19 @@ export const getUserById = async (uid: string) => {
 
   return userSnap.data();
 };
+
+export const updateUserProfile = async (
+  uid: string,
+  data: {
+    role?: string;
+    region?: string;
+    enabledModules?: string[];
+  }
+) => {
+  const userRef = doc(db, "users", uid);
+
+  await updateDoc(userRef, {
+    ...data,
+    updatedAt: new Date().toISOString(),
+  });
+};
