@@ -29,6 +29,7 @@ const courses = [
     title: "Sales Positioning Fundamentals",
     duration: "12 min",
     status: "Locked",
+    unlockAfter: "course-1",
   },
 ];
 
@@ -73,6 +74,12 @@ export default function Level1Page() {
         {courses.map((course) => {
           const courseId = `course-${course.id}`;
           const isCompleted = completedCourses.includes(courseId);
+          const isUnlockedByProgress =
+            course.unlockAfter &&
+            completedCourses.includes(course.unlockAfter);
+
+          const isAvailable =
+            course.status === "Available" || isUnlockedByProgress;
 
           return (
             <div
@@ -91,10 +98,13 @@ export default function Level1Page() {
 
               <div>
                 {isCompleted ? (
-                  <span className="rounded-full bg-green-100 px-3 py-1 text-xs text-green-700">
-                    Completed ✅
-                  </span>
-                ) : course.status === "Available" ? (
+                  <Link
+                    href="/training/level-1/course-1"
+                    className="rounded-full bg-green-100 px-3 py-1 text-xs text-green-700 hover:bg-green-200"
+                  >
+                    Completed ✅ Review
+                  </Link>
+                ) : isAvailable ? (
                   <Link
                     href="/training/level-1/course-1"
                     className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
