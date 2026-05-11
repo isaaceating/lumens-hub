@@ -14,6 +14,11 @@ const adminCards = [
     description: "Manage available Lumens HUB modules.",
     href: "/admin/modules",
   },
+  {
+  title: "Course Management",
+  description: "Create and manage training courses.",
+  href: "/admin/courses",
+  },
 ];
 
 export default function AdminPage() {

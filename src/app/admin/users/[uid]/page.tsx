@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { getUserById, updateUserProfile } from "@/lib/users";
 import Link from "next/link";
 
-const ALL_MODULES = ["dashboard", "training", "admin", "users", "modules"];
+const ALL_MODULES = ["dashboard", "training", "admin", "users", "modules", "courses"];
 const ROLES = ["user", "admin"];
 const REGIONS = ["APAC", "LUI", "LEI", "LCG"];
 
