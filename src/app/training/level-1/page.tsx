@@ -4,33 +4,41 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useUserProfile } from "@/lib/useUserProfile";
 import { getCourseProgress } from "@/lib/progress";
-import { level1Courses } from "@/app/config/training";
-
+import { getCoursesByLevel } from "@/lib/courses";
 
 export default function Level1Page() {
   const { user } = useUserProfile();
-  const [completedlevel1Courses, setCompletedlevel1Courses] = useState<string[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
+  const [completedCourses, setCompletedCourses] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      const data = await getCoursesByLevel("level-1");
+      setCourses(data);
+    };
+
+    fetchCourses();
+  }, []);
 
   useEffect(() => {
     const fetchProgress = async () => {
-      if (!user?.uid) return;
+      if (!user?.uid || courses.length === 0) return;
 
       const completed: string[] = [];
 
-      for (const course of level1Courses) {
-        const courseId = course.id;
-        const data = await getCourseProgress(user.uid, courseId);
+      for (const course of courses) {
+        const data = await getCourseProgress(user.uid, course.id);
 
         if (data?.completed) {
-          completed.push(courseId);
+          completed.push(course.id);
         }
       }
 
-      setCompletedlevel1Courses(completed);
+      setCompletedCourses(completed);
     };
 
     fetchProgress();
-  }, [user]);
+  }, [user, courses]);
 
   return (
     <div>
@@ -45,12 +53,12 @@ export default function Level1Page() {
       </div>
 
       <div className="space-y-4">
-        {level1Courses.map((course) => {
+        {courses.map((course) => {
           const courseId = course.id;
-          const isCompleted = completedlevel1Courses.includes(courseId);
+          const isCompleted = completedCourses.includes(courseId);
           const isUnlockedByProgress =
             course.unlockAfter &&
-            completedlevel1Courses.includes(course.unlockAfter);
+            completedCourses.includes(course.unlockAfter);
 
           const isAvailable =
             course.status === "Available" || isUnlockedByProgress;
