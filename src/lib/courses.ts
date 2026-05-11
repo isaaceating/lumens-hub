@@ -1,6 +1,19 @@
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
+export const getCourseById = async (courseId: string) => {
+  const courseRef = doc(db, "courses", courseId);
+  const courseSnap = await getDoc(courseRef);
+
+  if (!courseSnap.exists()) {
+    return null;
+  }
+
+  return {
+    id: courseSnap.id,
+    ...courseSnap.data(),
+  };
+};
 export const getCoursesByLevel = async (levelId: string) => {
   const q = query(
     collection(db, "courses"),

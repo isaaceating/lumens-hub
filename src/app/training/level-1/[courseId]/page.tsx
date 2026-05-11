@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useUserProfile } from "@/lib/useUserProfile";
 import { getCourseProgress, markCourseComplete } from "@/lib/progress";
-import { level1Courses } from "@/app/config/training";
+import { getCourseById } from "@/lib/courses";
 
 
 export default function CourseDetailPage() {
@@ -16,7 +16,19 @@ export default function CourseDetailPage() {
   const [completed, setCompleted] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const course = level1Courses.find((item) => item.id === courseId);
+  const [course, setCourse] = useState<any>(null);
+const [loadingCourse, setLoadingCourse] = useState(true);
+useEffect(() => {
+  const fetchCourse = async () => {
+    const data = await getCourseById(courseId);
+    setCourse(data);
+    setLoadingCourse(false);
+  };
+
+  if (courseId) {
+    fetchCourse();
+  }
+}, [courseId]);
 
   useEffect(() => {
     const fetchProgress = async () => {
@@ -41,7 +53,13 @@ export default function CourseDetailPage() {
     setSaving(false);
   };
 
-  if (!course) {
+  if (loadingCourse) {
+  return (
+    <div className="text-slate-500">Loading course...</div>
+  );
+}
+
+if (!course) {
     return (
       <div>
         <Link
