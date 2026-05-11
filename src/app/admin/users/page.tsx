@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getAllUsers } from "@/lib/users";
 import { updateUserModules } from "@/lib/users";
 import AdminGuard from "@/app/components/AdminGuard";
+import Link from "next/link";
 
 const ALL_MODULES = [
   "dashboard",
@@ -65,9 +66,12 @@ export default function AdminUsersPage() {
               key={index}
               className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
             >
-              <div className="font-semibold text-slate-900">
+              <Link
+                href={`/admin/users/${user.uid}`}
+                className="font-semibold text-blue-700 hover:underline"
+              >
                 {user.name || "No Name"}
-              </div>
+              </Link>
 
               <div className="text-sm text-slate-500">{user.email}</div>
 

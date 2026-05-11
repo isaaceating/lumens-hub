@@ -1,6 +1,6 @@
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "./firebase";
-import { doc, updateDoc } from "firebase/firestore";
+
 
 export const updateUserModules = async (
   uid: string,
@@ -24,4 +24,15 @@ export const getAllUsers = async () => {
   });
 
   return users;
+};
+
+export const getUserById = async (uid: string) => {
+  const userRef = doc(db, "users", uid);
+  const userSnap = await getDoc(userRef);
+
+  if (!userSnap.exists()) {
+    return null;
+  }
+
+  return userSnap.data();
 };
