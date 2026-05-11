@@ -4,38 +4,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useUserProfile } from "@/lib/useUserProfile";
 import { getCourseProgress } from "@/lib/progress";
+import { level1Courses } from "@/app/config/training";
 
-const courses = [
-  {
-    id: 1,
-    title: "Lumens Company Introduction",
-    duration: "10 min",
-    status: "Available",
-  },
-  {
-    id: 2,
-    title: "CamConnect Pro Overview",
-    duration: "18 min",
-    status: "Available",
-  },
-  {
-    id: 3,
-    title: "OIP Solution Basics",
-    duration: "15 min",
-    status: "Available",
-  },
-  {
-    id: 4,
-    title: "Sales Positioning Fundamentals",
-    duration: "12 min",
-    status: "Locked",
-    unlockAfter: "course-1",
-  },
-];
 
 export default function Level1Page() {
   const { user } = useUserProfile();
-  const [completedCourses, setCompletedCourses] = useState<string[]>([]);
+  const [completedlevel1Courses, setCompletedlevel1Courses] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchProgress = async () => {
@@ -43,8 +17,8 @@ export default function Level1Page() {
 
       const completed: string[] = [];
 
-      for (const course of courses) {
-        const courseId = `course-${course.id}`;
+      for (const course of level1Courses) {
+        const courseId = course.id;
         const data = await getCourseProgress(user.uid, courseId);
 
         if (data?.completed) {
@@ -52,7 +26,7 @@ export default function Level1Page() {
         }
       }
 
-      setCompletedCourses(completed);
+      setCompletedlevel1Courses(completed);
     };
 
     fetchProgress();
@@ -71,12 +45,12 @@ export default function Level1Page() {
       </div>
 
       <div className="space-y-4">
-        {courses.map((course) => {
-          const courseId = `course-${course.id}`;
-          const isCompleted = completedCourses.includes(courseId);
+        {level1Courses.map((course) => {
+          const courseId = course.id;
+          const isCompleted = completedlevel1Courses.includes(courseId);
           const isUnlockedByProgress =
             course.unlockAfter &&
-            completedCourses.includes(course.unlockAfter);
+            completedlevel1Courses.includes(course.unlockAfter);
 
           const isAvailable =
             course.status === "Available" || isUnlockedByProgress;
