@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
 import { useParams } from "next/navigation";
 import { getUserById, updateUserProfile } from "@/lib/users";
+import Link from "next/link";
 
 const ALL_MODULES = ["dashboard", "training", "admin", "users", "modules"];
 const ROLES = ["user", "admin"];
@@ -18,6 +19,7 @@ export default function UserDetailPage() {
   const [region, setRegion] = useState("APAC");
   const [enabledModules, setEnabledModules] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -46,24 +48,37 @@ export default function UserDetailPage() {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaved(false);
 
     await updateUserProfile(uid, {
-      role,
-      region,
-      enabledModules,
+        role,
+        region,
+        enabledModules,
     });
 
     const updatedUser = await getUserById(uid);
     setUser(updatedUser);
 
     setSaving(false);
-  };
+    setSaved(true);
+
+    setTimeout(() => {
+        setSaved(false);
+    }, 2500);
+    };
 
   return (
     <AdminGuard>
       <div>
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-slate-900">User Detail</h1>
+            <Link
+                href="/admin/users"
+                className="mb-4 inline-block text-sm text-blue-700 hover:underline"
+            >
+                ← Back to Users
+            </Link>
+
+            <h1 className="text-2xl font-bold text-slate-900">User Detail</h1>
           <p className="mt-2 text-slate-600">
             Manage user role, region, and module access.
           </p>
@@ -172,8 +187,14 @@ export default function UserDetailPage() {
                   {saving ? "Saving..." : "Save Changes"}
                 </button>
 
+                {saved && (
+                <span className="text-sm font-medium text-green-600">
+                    Saved successfully.
+                </span>
+                )}
+
                 <span className="text-sm text-slate-500">
-                  Current role: {user.role} / Region: {user.region}
+                Current role: {user.role} / Region: {user.region}
                 </span>
               </div>
             </div>
