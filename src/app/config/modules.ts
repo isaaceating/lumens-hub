@@ -40,4 +40,10 @@ export const modules: ModuleItem[] = [
     href: "/admin/modules",
     type: "admin",
   },
+  {
+  id: "courses",
+  name: "Courses",
+  href: "/admin/courses",
+  type: "admin",
+  },
 ];
