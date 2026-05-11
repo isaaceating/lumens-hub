@@ -92,11 +92,21 @@ if (!course) {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <div className="aspect-video rounded-2xl bg-slate-900 shadow-sm">
-            <div className="flex h-full items-center justify-center text-slate-400">
-              Video Placeholder
+          <div className="aspect-video overflow-hidden rounded-2xl bg-slate-900 shadow-sm">
+            {course.videoId ? (
+                <iframe
+                className="h-full w-full"
+                src={`https://www.youtube.com/embed/${course.videoId}`}
+                title={course.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                />
+            ) : (
+                <div className="flex h-full items-center justify-center text-slate-400">
+                No video available
+                </div>
+            )}
             </div>
-          </div>
 
           <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900">

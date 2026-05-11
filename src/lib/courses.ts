@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
 export const getCourseById = async (courseId: string) => {
@@ -28,4 +28,14 @@ export const getCoursesByLevel = async (levelId: string) => {
   })) as any[];
 
   return courses.sort((a, b) => (a.order || 0) - (b.order || 0));
+};
+
+export const createCourse = async (course: any) => {
+  const courseRef = doc(db, "courses", course.id);
+
+  await setDoc(courseRef, {
+    ...course,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
 };
