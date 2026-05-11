@@ -99,14 +99,14 @@ export default function Level1Page() {
               <div>
                 {isCompleted ? (
                   <Link
-                    href="/training/level-1/course-1"
+                    href={`/training/level-1/${courseId}`}
                     className="rounded-full bg-green-100 px-3 py-1 text-xs text-green-700 hover:bg-green-200"
                   >
                     Completed ✅ Review
                   </Link>
                 ) : isAvailable ? (
                   <Link
-                    href="/training/level-1/course-1"
+                    href={`/training/level-1/${courseId}`}
                     className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
                   >
                     Start
