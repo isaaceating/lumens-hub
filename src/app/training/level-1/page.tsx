@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 const courses = [
   {
@@ -58,9 +59,12 @@ export default function Level1Page() {
 
             <div>
               {course.status === "Available" ? (
-                <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">
-                  Start
-                </button>
+                <Link
+                href="/training/level-1/course-1"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+                >
+                Start
+                </Link>
               ) : (
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500">
                   Locked
