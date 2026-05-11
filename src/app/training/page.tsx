@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 const trainingLevels = [
   {
@@ -67,12 +68,21 @@ export default function TrainingPage() {
               {level.courses} courses
             </div>
 
-            <button
-              disabled={level.status !== "Available"}
-              className="mt-4 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-slate-300"
-            >
-              {level.status === "Available" ? "Start Training" : "Coming Soon"}
-            </button>
+            {level.status === "Available" ? (
+              <Link
+                href="/training/level-1"
+                className="mt-4 block w-full rounded-lg bg-blue-600 px-4 py-2 text-center text-sm text-white hover:bg-blue-700"
+              >
+                Start Training
+              </Link>
+            ) : (
+              <button
+                disabled
+                className="mt-4 w-full rounded-lg bg-slate-300 px-4 py-2 text-sm text-white"
+              >
+                Coming Soon
+              </button>
+            )}
           </div>
         ))}
       </div>
