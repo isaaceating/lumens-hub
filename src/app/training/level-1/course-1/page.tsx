@@ -1,8 +1,37 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useUserProfile } from "@/lib/useUserProfile";
+import { getCourseProgress, markCourseComplete } from "@/lib/progress";
 
 export default function Course1Page() {
+    const { user } = useUserProfile();
+    const [completed, setCompleted] = useState(false);
+    const [saving, setSaving] = useState(false);
+    useEffect(() => {
+    const fetchProgress = async () => {
+        if (!user?.uid) return;
+
+        const data = await getCourseProgress(user.uid, "course-1");
+
+        if (data?.completed) {
+        setCompleted(true);
+        }
+    };
+
+    fetchProgress();
+    }, [user]);
+    const handleComplete = async () => {
+    if (!user?.uid) return;
+
+    setSaving(true);
+
+    await markCourseComplete(user.uid, "course-1");
+    setCompleted(true);
+
+    setSaving(false);
+    };
   return (
     <div>
       <div className="mb-8">
@@ -75,8 +104,12 @@ export default function Course1Page() {
               the materials.
             </p>
 
-            <button className="mt-4 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">
-              Mark as Complete
+            <button
+            onClick={handleComplete}
+            disabled={completed || saving}
+            className="mt-4 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-green-600"
+            >
+            {completed ? "Completed ✅" : saving ? "Saving..." : "Mark as Complete"}
             </button>
           </div>
         </div>
