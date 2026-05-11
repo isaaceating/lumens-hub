@@ -1,5 +1,9 @@
 "use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useUserProfile } from "@/lib/useUserProfile";
+import { getCourseProgress } from "@/lib/progress";
 
 const courses = [
   {
@@ -29,6 +33,30 @@ const courses = [
 ];
 
 export default function Level1Page() {
+  const { user } = useUserProfile();
+  const [completedCourses, setCompletedCourses] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchProgress = async () => {
+      if (!user?.uid) return;
+
+      const completed: string[] = [];
+
+      for (const course of courses) {
+        const courseId = `course-${course.id}`;
+        const data = await getCourseProgress(user.uid, courseId);
+
+        if (data?.completed) {
+          completed.push(courseId);
+        }
+      }
+
+      setCompletedCourses(completed);
+    };
+
+    fetchProgress();
+  }, [user]);
+
   return (
     <div>
       <div className="mb-8">
@@ -42,37 +70,46 @@ export default function Level1Page() {
       </div>
 
       <div className="space-y-4">
-        {courses.map((course) => (
-          <div
-            key={course.id}
-            className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-          >
-            <div>
-              <div className="font-semibold text-slate-900">
-                {course.title}
+        {courses.map((course) => {
+          const courseId = `course-${course.id}`;
+          const isCompleted = completedCourses.includes(courseId);
+
+          return (
+            <div
+              key={course.id}
+              className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+            >
+              <div>
+                <div className="font-semibold text-slate-900">
+                  {course.title}
+                </div>
+
+                <div className="mt-1 text-sm text-slate-500">
+                  {course.duration}
+                </div>
               </div>
 
-              <div className="mt-1 text-sm text-slate-500">
-                {course.duration}
+              <div>
+                {isCompleted ? (
+                  <span className="rounded-full bg-green-100 px-3 py-1 text-xs text-green-700">
+                    Completed ✅
+                  </span>
+                ) : course.status === "Available" ? (
+                  <Link
+                    href="/training/level-1/course-1"
+                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+                  >
+                    Start
+                  </Link>
+                ) : (
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500">
+                    Locked
+                  </span>
+                )}
               </div>
             </div>
-
-            <div>
-              {course.status === "Available" ? (
-                <Link
-                href="/training/level-1/course-1"
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
-                >
-                Start
-                </Link>
-              ) : (
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500">
-                  Locked
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

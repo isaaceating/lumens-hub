@@ -1,5 +1,8 @@
 "use client";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useUserProfile } from "@/lib/useUserProfile";
+import { getCourseProgress } from "@/lib/progress";
 
 const trainingLevels = [
   {
@@ -29,6 +32,27 @@ const trainingLevels = [
 ];
 
 export default function TrainingPage() {
+  const { user } = useUserProfile();
+  const [completedCourses, setCompletedCourses] = useState<string[]>([]);
+  useEffect(() => {
+  const fetchProgress = async () => {
+    if (!user?.uid) return;
+
+    const completed: string[] = [];
+
+    for (const course of courses) {
+      const data = await getCourseProgress(user.uid, `course-${course.id}`);
+
+      if (data?.completed) {
+        completed.push(`course-${course.id}`);
+      }
+    }
+
+    setCompletedCourses(completed);
+  };
+
+  fetchProgress();
+}, [user]);
   return (
     <div>
       <div className="mb-8">
