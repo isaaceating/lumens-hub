@@ -1,19 +1,71 @@
 "use client";
 
 import Link from "next/link";
-import { modules } from "../config/modules";
+import { useEffect, useState } from "react";
 import { signInWithGoogle, logout } from "@/lib/auth";
 import { useUserProfile } from "@/lib/useUserProfile";
+import { getAllModules } from "@/lib/modules";
 
 export default function DashboardPage() {
   const { user, profile, loading } = useUserProfile();
+  const [modules, setModules] = useState<any[]>([]);
 
   const enabledModules = profile?.enabledModules || [];
 
+  useEffect(() => {
+    const fetchModules = async () => {
+      const data = await getAllModules();
+      setModules(data);
+    };
+
+    if (!loading && profile) {
+      fetchModules();
+    }
+  }, [loading, profile]);
+
   const visibleModules = modules.filter(
     (module) =>
-      module.showOnDashboard && enabledModules.includes(module.id)
+      module.enabled !== false &&
+      module.showOnDashboard &&
+      enabledModules.includes(module.id)
   );
+
+  const renderModuleCard = (module: any) => {
+    const cardContent = (
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-lg font-bold text-blue-700">
+          {module.name?.charAt(0)}
+        </div>
+
+        <h2 className="text-lg font-semibold text-slate-900">
+          {module.name}
+        </h2>
+
+        <p className="mt-2 text-sm text-slate-500">
+          {module.description || `Open ${module.name} module`}
+        </p>
+      </div>
+    );
+
+    if (module.moduleKind === "external") {
+      return (
+        <a
+          key={module.id}
+          href={module.href}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {cardContent}
+        </a>
+      );
+    }
+
+    return (
+      <Link key={module.id} href={module.href}>
+        {cardContent}
+      </Link>
+    );
+  };
 
   return (
     <div>
@@ -46,31 +98,11 @@ export default function DashboardPage() {
 
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900">Home</h1>
-        <p className="mt-2 text-slate-600">
-          Welcome to Lumens platform.
-        </p>
+        <p className="mt-2 text-slate-600">Welcome to Lumens platform.</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {visibleModules.map((module) => (
-          <Link
-            key={module.id}
-            href={module.href}
-            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-          >
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-lg font-bold text-blue-700">
-              {module.name.charAt(0)}
-            </div>
-
-            <h2 className="text-lg font-semibold text-slate-900">
-              {module.name}
-            </h2>
-
-            <p className="mt-2 text-sm text-slate-500">
-              Open {module.name} module
-            </p>
-          </Link>
-        ))}
+        {visibleModules.map((module) => renderModuleCard(module))}
       </div>
     </div>
   );

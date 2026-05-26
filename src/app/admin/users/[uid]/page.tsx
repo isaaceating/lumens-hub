@@ -5,8 +5,10 @@ import AdminGuard from "@/app/components/AdminGuard";
 import { useParams } from "next/navigation";
 import { getUserById, updateUserProfile } from "@/lib/users";
 import Link from "next/link";
+import { modules as staticModules } from "@/app/config/modules";
+import { getAllModules } from "@/lib/modules";
 
-const ALL_MODULES = ["dashboard", "training", "admin", "users", "modules", "courses"];
+
 const ROLES = ["user", "admin"];
 const REGIONS = ["APAC", "LUI", "LEI", "LCG"];
 
@@ -18,6 +20,7 @@ export default function UserDetailPage() {
   const [role, setRole] = useState("user");
   const [region, setRegion] = useState("APAC");
   const [enabledModules, setEnabledModules] = useState<string[]>([]);
+  const [moduleOptions, setModuleOptions] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -37,6 +40,23 @@ export default function UserDetailPage() {
       fetchUser();
     }
   }, [uid]);
+
+  useEffect(() => {
+    const fetchModules = async () => {
+      const firestoreModules = await getAllModules();
+
+      const combined = [...staticModules, ...firestoreModules];
+
+      const unique = combined.filter(
+        (module, index, self) =>
+          index === self.findIndex((item) => item.id === module.id)
+      );
+
+      setModuleOptions(unique);
+    };
+
+    fetchModules();
+  }, []);
 
   const toggleModule = (moduleId: string) => {
     setEnabledModules((prev) =>
@@ -162,17 +182,17 @@ export default function UserDetailPage() {
                 </div>
 
                 <div className="grid gap-2 md:grid-cols-2">
-                  {ALL_MODULES.map((moduleId) => (
+                  {moduleOptions.map((module) => (
                     <label
-                      key={moduleId}
+                      key={module.id}
                       className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm"
                     >
                       <input
                         type="checkbox"
-                        checked={enabledModules.includes(moduleId)}
-                        onChange={() => toggleModule(moduleId)}
+                        checked={enabledModules.includes(module.id)}
+                        onChange={() => toggleModule(module.id)}
                       />
-                      {moduleId}
+                      {module.name} ({module.id})
                     </label>
                   ))}
                 </div>

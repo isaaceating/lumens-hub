@@ -49,6 +49,7 @@ export default function AdminModulesPage() {
                 <th className="px-4 py-3 font-semibold">Route / URL</th>
                 <th className="px-4 py-3 font-semibold">Dashboard</th>
                 <th className="px-4 py-3 font-semibold">Enabled</th>
+                <th className="px-4 py-3 font-semibold">Action</th>
               </tr>
             </thead>
 
@@ -58,19 +59,34 @@ export default function AdminModulesPage() {
                   <td className="px-4 py-3 font-mono text-xs text-slate-600">
                     {module.id}
                   </td>
+
                   <td className="px-4 py-3 font-medium text-slate-900">
                     {module.name}
                   </td>
+
                   <td className="px-4 py-3 text-slate-600">{module.type}</td>
+
                   <td className="px-4 py-3 text-slate-600">
                     {module.moduleKind}
                   </td>
+
                   <td className="px-4 py-3 text-slate-600">{module.href}</td>
+
                   <td className="px-4 py-3 text-slate-600">
                     {module.showOnDashboard ? "Yes" : "No"}
                   </td>
+
                   <td className="px-4 py-3 text-slate-600">
                     {module.enabled ? "Yes" : "No"}
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/admin/modules/${module.id}`}
+                      className="text-blue-700 hover:underline"
+                    >
+                      Edit
+                    </Link>
                   </td>
                 </tr>
               ))}
