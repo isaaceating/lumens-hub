@@ -45,9 +45,9 @@ export default function DashboardPage() {
       </div>
 
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Home</h1>
         <p className="mt-2 text-slate-600">
-          Welcome to Lumens HUB. Select a module to get started.
+          Welcome to Lumens platform.
         </p>
       </div>
 

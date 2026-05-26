@@ -21,8 +21,7 @@ export default function EditCoursePage() {
     description: "",
     overview: "",
     videoId: "",
-    slidesUrl: "",
-    referenceUrl: "",
+    materials: [{ name: "", url: "" }],
     order: 1,
     unlockAfter: "",
   });
@@ -40,8 +39,7 @@ export default function EditCoursePage() {
           description: data.description || "",
           overview: data.overview || "",
           videoId: data.videoId || "",
-          slidesUrl: data.slidesUrl || "",
-          referenceUrl: data.referenceUrl || "",
+          materials: data.materials?.length ? data.materials : [{ name: "", url: "" }],
           order: data.order || 1,
           unlockAfter: data.unlockAfter || "",
         });
@@ -68,6 +66,39 @@ export default function EditCoursePage() {
     }));
   };
 
+    const handleMaterialChange = (
+      index: number,
+      field: "name" | "url",
+      value: string
+    ) => {
+      setForm((prev) => {
+        const nextMaterials = [...prev.materials];
+        nextMaterials[index] = {
+          ...nextMaterials[index],
+          [field]: value,
+        };
+
+        return {
+          ...prev,
+          materials: nextMaterials,
+        };
+      });
+    };
+
+    const addMaterial = () => {
+      setForm((prev) => ({
+        ...prev,
+        materials: [...prev.materials, { name: "", url: "" }],
+      }));
+    };
+
+    const removeMaterial = (index: number) => {
+      setForm((prev) => ({
+        ...prev,
+        materials: prev.materials.filter((_, i) => i !== index),
+      }));
+    };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -75,6 +106,9 @@ export default function EditCoursePage() {
     await updateCourse(courseId, {
       ...form,
       unlockAfter: form.unlockAfter || null,
+      materials: form.materials.filter(
+        (material) => material.name.trim() && material.url.trim()
+      ),
     });
 
     setSaving(false);
@@ -221,29 +255,54 @@ export default function EditCoursePage() {
             </div>
 
             <div className="md:col-span-2">
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Slides URL
-              </label>
-              <input
-                name="slidesUrl"
-                value={form.slidesUrl}
-                onChange={handleChange}
-                placeholder="https://..."
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
+              <div className="mb-3 flex items-center justify-between">
+                <label className="block text-sm font-medium text-slate-700">
+                  Course Materials
+                </label>
 
-            <div className="md:col-span-2">
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Reference Document URL
-              </label>
-              <input
-                name="referenceUrl"
-                value={form.referenceUrl}
-                onChange={handleChange}
-                placeholder="https://..."
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
+                <button
+                  type="button"
+                  onClick={addMaterial}
+                  className="rounded-lg bg-slate-100 px-3 py-1 text-sm text-slate-700 hover:bg-slate-200"
+                >
+                  + Add Material
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {form.materials.map((material, index) => (
+                  <div
+                    key={index}
+                    className="grid gap-3 rounded-xl border border-slate-200 p-3 md:grid-cols-[1fr_2fr_auto]"
+                  >
+                    <input
+                      value={material.name}
+                      onChange={(e) =>
+                        handleMaterialChange(index, "name", e.target.value)
+                      }
+                      placeholder="Material name"
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    />
+
+                    <input
+                      value={material.url}
+                      onChange={(e) =>
+                        handleMaterialChange(index, "url", e.target.value)
+                      }
+                      placeholder="https://..."
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => removeMaterial(index)}
+                      className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 hover:bg-red-100"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="md:col-span-2">

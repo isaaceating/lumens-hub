@@ -124,33 +124,21 @@ if (!course) {
           </h2>
 
           <div className="mt-4 space-y-3">
-            {course.slidesUrl ? (
-              <a
-                href={course.slidesUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block rounded-lg border border-slate-200 px-4 py-3 text-sm text-blue-700 hover:bg-slate-50"
-              >
-                Slides
-              </a>
+            {course.materials?.length ? (
+              course.materials.map((material: any, index: number) => (
+                <a
+                  key={index}
+                  href={material.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block rounded-lg border border-slate-200 px-4 py-3 text-sm text-blue-700 hover:bg-slate-50"
+                >
+                  {material.name}
+                </a>
+              ))
             ) : (
-              <div className="block rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-400">
-                Slides not available
-              </div>
-            )}
-
-            {course.referenceUrl ? (
-              <a
-                href={course.referenceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block rounded-lg border border-slate-200 px-4 py-3 text-sm text-blue-700 hover:bg-slate-50"
-              >
-                Reference Document
-              </a>
-            ) : (
-              <div className="block rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-400">
-                Reference document not available
+              <div className="rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-400">
+                No materials available
               </div>
             )}
           </div>
