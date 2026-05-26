@@ -118,44 +118,41 @@ if (!course) {
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Course Materials
-            </h2>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Course Materials
+          </h2>
 
-            <div className="mt-4 space-y-3">
+          <div className="mt-4 space-y-3">
+            {course.slidesUrl ? (
               <a
-                href="#"
+                href={course.slidesUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="block rounded-lg border border-slate-200 px-4 py-3 text-sm text-blue-700 hover:bg-slate-50"
               >
                 Slides
               </a>
+            ) : (
+              <div className="block rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-400">
+                Slides not available
+              </div>
+            )}
 
+            {course.referenceUrl ? (
               <a
-                href="#"
+                href={course.referenceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="block rounded-lg border border-slate-200 px-4 py-3 text-sm text-blue-700 hover:bg-slate-50"
               >
                 Reference Document
               </a>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Progress</h2>
-
-            <p className="mt-2 text-sm text-slate-500">
-              Mark this course as completed after watching the video and reading
-              the materials.
-            </p>
-
-            <button
-              onClick={handleComplete}
-              disabled={completed || saving}
-              className="mt-4 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-green-600"
-            >
-              {completed ? "Completed ✅" : saving ? "Saving..." : "Mark as Complete"}
-            </button>
+            ) : (
+              <div className="block rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-400">
+                Reference document not available
+              </div>
+            )}
           </div>
         </div>
       </div>

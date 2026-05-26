@@ -49,8 +49,8 @@ const visibleModules = loading
   return (
     <aside className="w-64 bg-slate-950 text-white">
       <div className="border-b border-slate-800 px-6 py-5">
-        <h1 className="text-xl font-bold">Lumens HUB</h1>
-        <p className="mt-1 text-sm text-slate-400">v0 Platform</p>
+        <h1 className="text-xl font-bold">Lumens Platform</h1>
+        <p className="mt-1 text-sm text-slate-400">v0.1.0</p>
       </div>
 
       <nav className="p-4">

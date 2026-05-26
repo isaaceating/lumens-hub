@@ -11,13 +11,13 @@ export interface ModuleItem {
 export const modules: ModuleItem[] = [
   {
     id: "dashboard",
-    name: "Dashboard",
+    name: "Home",
     href: "/dashboard",
     type: "core",
   },
   {
   id: "training",
-  name: "Sales Training",
+  name: "Certification",
   href: "/training",
   type: "feature",
   showOnDashboard: true,

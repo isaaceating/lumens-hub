@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where, doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, getDoc, setDoc,updateDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
 export const getCourseById = async (courseId: string) => {
@@ -36,6 +36,15 @@ export const createCourse = async (course: any) => {
   await setDoc(courseRef, {
     ...course,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+};
+
+export const updateCourse = async (courseId: string, data: any) => {
+  const courseRef = doc(db, "courses", courseId);
+
+  await updateDoc(courseRef, {
+    ...data,
     updatedAt: new Date().toISOString(),
   });
 };

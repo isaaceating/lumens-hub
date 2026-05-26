@@ -30,7 +30,7 @@ export default function RootLayout({
             <main className="flex-1">
               <header className="border-b border-slate-200 bg-white px-8 py-4">
                 <div className="text-sm text-slate-500">
-                  Lumens Digital Operation System
+                  Lumens Digital Optical Inc.
                 </div>
               </header>
 
