@@ -26,7 +26,7 @@ export default function UserDetailPage() {
 
   useEffect(() => {
     const fetchUser = async () => {
-      const data = await getUserById(uid);
+      const data = (await getCourseById(courseId)) as any;
 
       if (data) {
         setUser(data);
