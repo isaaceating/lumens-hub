@@ -28,7 +28,7 @@ export default function EditCoursePage() {
 
   useEffect(() => {
     const fetchCourse = async () => {
-      const data = await getCourseById(courseId);
+      const data = (await getCourseById(courseId)) as any;
 
       if (data) {
         setForm({
