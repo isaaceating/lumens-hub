@@ -177,6 +177,7 @@ export default function EditModulePage() {
               >
                 <option value="feature">feature</option>
                 <option value="admin">admin</option>
+                <option value="core">core</option>
               </select>
             </div>
 
