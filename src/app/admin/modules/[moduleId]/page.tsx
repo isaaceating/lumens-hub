@@ -28,7 +28,7 @@ export default function EditModulePage() {
 
   useEffect(() => {
     const fetchModule = async () => {
-      const data = await getModuleById(moduleId);
+      const data = (await getModuleById(moduleId)) as any;
 
       if (data) {
         setForm({

@@ -20,7 +20,7 @@ export default function CourseDetailPage() {
 const [loadingCourse, setLoadingCourse] = useState(true);
 useEffect(() => {
   const fetchCourse = async () => {
-    const data = await getCourseById(courseId);
+    const data = (await getCourseById(courseId)) as any;
     setCourse(data);
     setLoadingCourse(false);
   };
@@ -34,7 +34,7 @@ useEffect(() => {
     const fetchProgress = async () => {
       if (!user?.uid || !courseId) return;
 
-      const data = await getCourseProgress(user.uid, courseId);
+      const data = await getCourseProgress(user.uid, courseId) as any;
 
       if (data?.completed) {
         setCompleted(true);
