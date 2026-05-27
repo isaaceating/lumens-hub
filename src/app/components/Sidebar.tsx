@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-
 import { useUserProfile } from "@/lib/useUserProfile";
 import { getAllModules } from "@/lib/modules";
 
@@ -11,14 +10,13 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { profile, loading } = useUserProfile();
 
-  const [firestoreModules, setFirestoreModules] = useState<any[]>([]);
-
+  const [modules, setModules] = useState<any[]>([]);
   const enabledModules = profile?.enabledModules || [];
 
   useEffect(() => {
     const fetchModules = async () => {
       const data = await getAllModules();
-      setFirestoreModules(data);
+      setModules(data);
     };
 
     if (!loading && profile) {
@@ -26,11 +24,9 @@ export default function Sidebar() {
     }
   }, [loading, profile]);
 
-const uniqueModules = firestoreModules;
-
   const visibleModules = loading
     ? []
-    : uniqueModules.filter((module) => {
+    : modules.filter((module) => {
         if (module.enabled === false) return false;
 
         if (module.type === "admin") {

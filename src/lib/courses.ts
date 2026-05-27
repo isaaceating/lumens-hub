@@ -1,7 +1,7 @@
 import { collection, getDocs, query, where, doc, getDoc, setDoc,updateDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
-export const getCourseById = async (courseId: string) => {
+export const getCourseById = async (courseId: string): Promise<any | null> => {
   const courseRef = doc(db, "courses", courseId);
   const courseSnap = await getDoc(courseRef);
 
