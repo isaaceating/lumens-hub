@@ -3,19 +3,44 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import AdminGuard from "@/app/components/AdminGuard";
-import { getAllModules } from "@/lib/modules";
+import { deleteModule, getAllModules } from "@/lib/modules";
 
 export default function AdminModulesPage() {
   const [modules, setModules] = useState<any[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const fetchModules = async () => {
+    const data = await getAllModules();
+    setModules(data);
+  };
 
   useEffect(() => {
-    const fetchModules = async () => {
-      const data = await getAllModules();
-      setModules(data);
-    };
-
     fetchModules();
   }, []);
+
+  const handleDelete = async (module: any) => {
+    if (module.locked) {
+      alert("This is a locked system module and cannot be deleted.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${module.name}"?\n\nThis action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setDeletingId(module.id);
+      await deleteModule(module.id);
+      await fetchModules();
+    } catch (error) {
+      console.error("Failed to delete module:", error);
+      alert("Failed to delete module. Please try again.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <AdminGuard>
@@ -42,6 +67,7 @@ export default function AdminModulesPage() {
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
+                <th className="px-4 py-3 font-semibold">Order</th>
                 <th className="px-4 py-3 font-semibold">ID</th>
                 <th className="px-4 py-3 font-semibold">Name</th>
                 <th className="px-4 py-3 font-semibold">Type</th>
@@ -56,6 +82,10 @@ export default function AdminModulesPage() {
             <tbody className="divide-y divide-slate-100">
               {modules.map((module) => (
                 <tr key={module.id}>
+                  <td className="px-4 py-3 text-slate-600">
+                    {module.order ?? "-"}
+                  </td>
+
                   <td className="px-4 py-3 font-mono text-xs text-slate-600">
                     {module.id}
                   </td>
@@ -81,12 +111,23 @@ export default function AdminModulesPage() {
                   </td>
 
                   <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/modules/${module.id}`}
-                      className="text-blue-700 hover:underline"
-                    >
-                      Edit
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <Link
+                        href={`/admin/modules/${module.id}`}
+                        className="text-blue-700 hover:underline"
+                      >
+                        Edit
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(module)}
+                        disabled={deletingId === module.id || module.locked}
+                        className="text-red-600 hover:underline disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
+                      >
+                        {deletingId === module.id ? "Deleting..." : "Delete"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

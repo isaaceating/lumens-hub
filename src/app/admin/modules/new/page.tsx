@@ -18,7 +18,7 @@ export default function NewModulePage() {
     embedUrl: "",
     showOnDashboard: true,
     enabled: true,
-    order: 10,
+    order: 10 as number | "",
   });
 
   const handleChange = (
@@ -35,7 +35,9 @@ export default function NewModulePage() {
         type === "checkbox"
           ? checked
           : name === "order"
-          ? Number(value)
+          ? value === ""
+            ? ""
+            : Number(value)
           : value,
     }));
   };
@@ -44,8 +46,11 @@ export default function NewModulePage() {
     e.preventDefault();
     setSaving(true);
 
+    const normalizedOrder = form.order === "" ? 0 : Number(form.order);
+
     await createModule({
       ...form,
+      order: normalizedOrder,
       embedUrl: form.embedUrl || null,
     });
 

@@ -76,7 +76,7 @@ export default function UserDetailPage() {
         enabledModules,
     });
 
-    const updatedUser = await getUserById(uid);
+    const updatedUser = (await getUserById(uid)) as any;
     setUser(updatedUser);
 
     setSaving(false);

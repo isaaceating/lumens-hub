@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -50,4 +51,9 @@ export const updateModule = async (moduleId: string, data: any) => {
     ...data,
     updatedAt: new Date().toISOString(),
   });
+};
+
+export const deleteModule = async (moduleId: string) => {
+  const moduleRef = doc(db, "modules", moduleId);
+  await deleteDoc(moduleRef);
 };

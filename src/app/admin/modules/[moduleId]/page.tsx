@@ -22,7 +22,7 @@ export default function EditModulePage() {
     embedUrl: "",
     showOnDashboard: true,
     enabled: true,
-    order: 10,
+    order: 10 as number | "",
     locked: false,
   });
 
@@ -40,7 +40,7 @@ export default function EditModulePage() {
           embedUrl: data.embedUrl || "",
           showOnDashboard: data.showOnDashboard ?? true,
           enabled: data.enabled ?? true,
-          order: data.order || 10,
+          order: data.order ?? 10,
           locked: data.locked || false,
         });
       }
@@ -64,7 +64,9 @@ export default function EditModulePage() {
         type === "checkbox"
           ? checked
           : name === "order"
-          ? Number(value)
+          ? value === ""
+            ? ""
+            : Number(value)
           : value,
     }));
   };
@@ -73,16 +75,19 @@ export default function EditModulePage() {
     e.preventDefault();
     setSaving(true);
 
+    const normalizedOrder = form.order === "" ? 0 : Number(form.order);
+
     const payload = form.locked
       ? {
           name: form.name,
           description: form.description,
           showOnDashboard: form.showOnDashboard,
-          order: form.order,
+          order: normalizedOrder,
           enabled: form.enabled,
         }
       : {
           ...form,
+          order: normalizedOrder,
           embedUrl: form.embedUrl || null,
         };
 
