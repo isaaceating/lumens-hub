@@ -6,6 +6,14 @@ import { signInWithGoogle, logout } from "@/lib/auth";
 import { useUserProfile } from "@/lib/useUserProfile";
 import { getAllModules } from "@/lib/modules";
 
+const getModuleHref = (module: any) => {
+  if (module.moduleKind === "embedded") {
+    return `/modules/${module.id}`;
+  }
+
+  return module.href || "#";
+};
+
 export default function DashboardPage() {
   const { user, profile, loading } = useUserProfile();
   const [modules, setModules] = useState<any[]>([]);
@@ -31,6 +39,8 @@ export default function DashboardPage() {
   );
 
   const renderModuleCard = (module: any) => {
+    const href = getModuleHref(module);
+
     const cardContent = (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
         <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-lg font-bold text-blue-700">
@@ -51,7 +61,7 @@ export default function DashboardPage() {
       return (
         <a
           key={module.id}
-          href={module.href}
+          href={href}
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -61,7 +71,7 @@ export default function DashboardPage() {
     }
 
     return (
-      <Link key={module.id} href={module.href}>
+      <Link key={module.id} href={href}>
         {cardContent}
       </Link>
     );

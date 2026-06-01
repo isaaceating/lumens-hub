@@ -6,6 +6,14 @@ import { useEffect, useState } from "react";
 import { useUserProfile } from "@/lib/useUserProfile";
 import { getAllModules } from "@/lib/modules";
 
+const getModuleHref = (module: any) => {
+  if (module.moduleKind === "embedded") {
+    return `/modules/${module.id}`;
+  }
+
+  return module.href || "#";
+};
+
 export default function Sidebar() {
   const pathname = usePathname();
   const { profile, loading } = useUserProfile();
@@ -43,13 +51,14 @@ export default function Sidebar() {
   };
 
   const renderItem = (item: any) => {
-    const isActive = pathname === item.href;
+    const href = getModuleHref(item);
+    const isActive = pathname === href;
 
     if (item.moduleKind === "external") {
       return (
         <a
           key={item.id}
-          href={item.href}
+          href={href}
           target="_blank"
           rel="noopener noreferrer"
           className={`block rounded-lg px-4 py-2 text-sm ${
@@ -66,7 +75,7 @@ export default function Sidebar() {
     return (
       <Link
         key={item.id}
-        href={item.href}
+        href={href}
         className={`block rounded-lg px-4 py-2 text-sm ${
           isActive
             ? "bg-blue-600 text-white"

@@ -2,12 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { getModuleById } from "@/lib/modules";
+import { useUserProfile } from "@/lib/useUserProfile";
 
 export default function ModuleRendererPage() {
   const params = useParams();
+  const router = useRouter();
   const moduleId = params.moduleId as string;
+
+  const { profile, loading: profileLoading } = useUserProfile();
 
   const [module, setModule] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -24,7 +28,7 @@ export default function ModuleRendererPage() {
     }
   }, [moduleId]);
 
-  if (loading) {
+  if (loading || profileLoading) {
     return <div className="text-slate-500">Loading module...</div>;
   }
 
@@ -36,7 +40,29 @@ export default function ModuleRendererPage() {
     );
   }
 
-  if (!module.enabled) {
+  const enabledModules = profile?.enabledModules || [];
+  const hasAccess = enabledModules.includes(moduleId);
+
+  if (!hasAccess) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700">
+        <h1 className="text-xl font-bold">Access denied</h1>
+        <p className="mt-2">
+          You do not have permission to access this module.
+        </p>
+
+        <button
+          type="button"
+          onClick={() => router.push("/dashboard")}
+          className="mt-5 rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    );
+  }
+
+  if (module.enabled === false) {
     return (
       <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-6 text-yellow-700">
         This module is currently disabled.
@@ -64,16 +90,26 @@ export default function ModuleRendererPage() {
     );
   }
 
-if (module.moduleKind === "embedded") {
-  return (
-    <div className="-m-8 h-[calc(100vh-64px)]">
-      <iframe
-        src={module.embedUrl}
-        className="h-full w-full border-0 bg-white"
-      />
-    </div>
-  );
-}
+  if (module.moduleKind === "embedded") {
+    if (!module.embedUrl) {
+      return (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700">
+          Missing Embed URL.
+        </div>
+      );
+    }
+
+    return (
+      <div className="-m-8 h-[calc(100vh-64px)]">
+        <iframe
+          src={module.embedUrl}
+          title={module.name}
+          className="h-full w-full border-0 bg-white"
+          allowFullScreen
+        />
+      </div>
+    );
+  }
 
   return (
     <div>

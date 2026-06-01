@@ -26,6 +26,8 @@ export default function EditModulePage() {
     locked: false,
   });
 
+  const isNativeModule = form.moduleKind === "native" || form.locked;
+
   useEffect(() => {
     const fetchModule = async () => {
       const data = (await getModuleById(moduleId)) as any;
@@ -52,46 +54,109 @@ export default function EditModulePage() {
   }, [moduleId]);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value, type } = e.target;
     const checked =
       e.target instanceof HTMLInputElement ? e.target.checked : false;
 
-    setForm((prev) => ({
-      ...prev,
-      [name]:
-        type === "checkbox"
-          ? checked
-          : name === "order"
-          ? value === ""
-            ? ""
-            : Number(value)
-          : value,
-    }));
+    setForm((prev) => {
+      if (type === "checkbox") {
+        return {
+          ...prev,
+          [name]: checked,
+        };
+      }
+
+      if (name === "order") {
+        return {
+          ...prev,
+          order: value === "" ? "" : Number(value),
+        };
+      }
+
+      if (name === "moduleKind") {
+        return {
+          ...prev,
+          moduleKind: value,
+          href: "",
+          embedUrl: "",
+        };
+      }
+
+      if (name === "href") {
+        return {
+          ...prev,
+          href: value,
+          embedUrl: "",
+        };
+      }
+
+      if (name === "embedUrl") {
+        return {
+          ...prev,
+          embedUrl: value,
+          href: `/modules/${moduleId}`,
+        };
+      }
+
+      return {
+        ...prev,
+        [name]: value,
+      };
+    });
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
     setSaving(true);
 
     const normalizedOrder = form.order === "" ? 0 : Number(form.order);
 
-    const payload = form.locked
-      ? {
-          name: form.name,
-          description: form.description,
-          showOnDashboard: form.showOnDashboard,
-          order: normalizedOrder,
-          enabled: form.enabled,
-        }
-      : {
-          ...form,
-          order: normalizedOrder,
-          embedUrl: form.embedUrl || null,
-        };
+    if (isNativeModule) {
+      await updateModule(moduleId, {
+        name: form.name.trim(),
+        description: form.description.trim(),
+        showOnDashboard: form.showOnDashboard,
+        order: normalizedOrder,
+        enabled: form.enabled,
+      });
 
-    await updateModule(moduleId, payload);
+      setSaving(false);
+      router.push("/admin/modules");
+      return;
+    }
+
+    if (form.moduleKind === "external" && !form.href.trim()) {
+      setSaving(false);
+      alert("External URL is required.");
+      return;
+    }
+
+    if (form.moduleKind === "embedded" && !form.embedUrl.trim()) {
+      setSaving(false);
+      alert("Embed URL is required.");
+      return;
+    }
+
+    await updateModule(moduleId, {
+      name: form.name.trim(),
+      description: form.description.trim(),
+      type: "feature",
+      moduleKind: form.moduleKind,
+      href:
+        form.moduleKind === "embedded"
+          ? `/modules/${moduleId}`
+          : form.href.trim(),
+      embedUrl: form.moduleKind === "embedded" ? form.embedUrl.trim() : null,
+      showOnDashboard: form.showOnDashboard,
+      order: normalizedOrder,
+      enabled: form.enabled,
+      locked: false,
+    });
 
     setSaving(false);
     router.push("/admin/modules");
@@ -110,6 +175,7 @@ export default function EditModulePage() {
       <div>
         <div className="mb-8">
           <button
+            type="button"
             onClick={() => router.push("/admin/modules")}
             className="mb-4 text-sm text-blue-700 hover:underline"
           >
@@ -136,6 +202,9 @@ export default function EditModulePage() {
                 disabled
                 className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500"
               />
+              <p className="mt-1 text-xs text-slate-500">
+                Module ID is used as the system key and cannot be changed.
+              </p>
             </div>
 
             <div>
@@ -164,66 +233,111 @@ export default function EditModulePage() {
               />
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Type
-              </label>
-              <select
-                name="type"
-                value={form.type}
-                onChange={handleChange}
-                disabled={form.locked}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100"
-              >
-                <option value="feature">feature</option>
-                <option value="admin">admin</option>
-                <option value="core">core</option>
-              </select>
-            </div>
+            {isNativeModule ? (
+              <>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Type
+                  </label>
+                  <input
+                    value={form.type}
+                    disabled
+                    className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500"
+                  />
+                </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Module Kind
-              </label>
-              <select
-                name="moduleKind"
-                value={form.moduleKind}
-                onChange={handleChange}
-                disabled={form.locked}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100"
-              >
-                <option value="native">native</option>
-                <option value="external">external</option>
-                <option value="embedded">embedded</option>
-              </select>
-            </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Module Kind
+                  </label>
+                  <input
+                    value="native"
+                    disabled
+                    className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500"
+                  />
+                </div>
 
-            <div className="md:col-span-2">
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Route / External URL
-              </label>
-              <input
-                name="href"
-                value={form.href}
-                onChange={handleChange}
-                disabled={form.locked}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100"
-              />
-            </div>
+                <div className="md:col-span-2">
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Internal Route
+                  </label>
+                  <input
+                    value={form.href}
+                    disabled
+                    className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Type
+                  </label>
+                  <input
+                    value="feature"
+                    disabled
+                    className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500"
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    Custom modules are always feature modules.
+                  </p>
+                </div>
 
-            {form.moduleKind === "embedded" && (
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Embed URL
-                </label>
-                <input
-                  name="embedUrl"
-                  value={form.embedUrl}
-                  onChange={handleChange}
-                  disabled={form.locked}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100"
-                />
-              </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Module Kind
+                  </label>
+                  <select
+                    name="moduleKind"
+                    value={form.moduleKind}
+                    onChange={handleChange}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  >
+                    <option value="external">external</option>
+                    <option value="embedded">embedded</option>
+                  </select>
+                </div>
+
+                {form.moduleKind === "external" && (
+                  <div className="md:col-span-2">
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      External URL
+                    </label>
+                    <input
+                      name="href"
+                      value={form.href}
+                      onChange={handleChange}
+                      placeholder="https://sites.google.com/view/lumensapac"
+                      required
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    />
+                    <p className="mt-1 text-xs text-slate-500">
+                      This module will open in a new browser tab.
+                    </p>
+                  </div>
+                )}
+
+                {form.moduleKind === "embedded" && (
+                  <div className="md:col-span-2">
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Embed URL
+                    </label>
+                    <input
+                      name="embedUrl"
+                      value={form.embedUrl}
+                      onChange={handleChange}
+                      placeholder="https://script.google.com/macros/s/.../exec"
+                      required
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    />
+                    <p className="mt-1 text-xs text-slate-500">
+                      Internal route is automatically set to{" "}
+                      <span className="font-mono">/modules/{moduleId}</span>
+                    </p>
+                  </div>
+                )}
+              </>
             )}
 
             <div>
@@ -262,9 +376,10 @@ export default function EditModulePage() {
             </div>
           </div>
 
-          {form.locked && (
+          {isNativeModule && (
             <div className="rounded-lg bg-yellow-50 p-4 text-sm text-yellow-700">
-              This is a native system module. Route and module type are locked.
+              This is a native system module. Type, module kind, and route are
+              managed by code and cannot be changed here.
             </div>
           )}
 
