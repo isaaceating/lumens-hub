@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { signInWithGoogle, logout } from "@/lib/auth";
 import { useUserProfile } from "@/lib/useUserProfile";
 import { getAllModules } from "@/lib/modules";
 
@@ -15,7 +14,7 @@ const getModuleHref = (module: any) => {
 };
 
 export default function DashboardPage() {
-  const { user, profile, loading } = useUserProfile();
+  const { profile, loading } = useUserProfile();
   const [modules, setModules] = useState<any[]>([]);
 
   const enabledModules = profile?.enabledModules || [];
@@ -31,28 +30,29 @@ export default function DashboardPage() {
     }
   }, [loading, profile]);
 
-  const visibleModules = modules.filter(
+  const visibleResources = modules.filter(
     (module) =>
       module.enabled !== false &&
       module.showOnDashboard &&
+      module.type === "feature" &&
       enabledModules.includes(module.id)
   );
 
-  const renderModuleCard = (module: any) => {
+  const renderResourceCard = (module: any) => {
     const href = getModuleHref(module);
 
     const cardContent = (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+      <div className="h-full rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
         <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-lg font-bold text-blue-700">
           {module.name?.charAt(0)}
         </div>
 
-        <h2 className="text-lg font-semibold text-slate-900">
+        <h3 className="text-lg font-semibold text-slate-900">
           {module.name}
-        </h2>
+        </h3>
 
         <p className="mt-2 text-sm text-slate-500">
-          {module.description || `Open ${module.name} module`}
+          {module.description || "Open this resource."}
         </p>
       </div>
     );
@@ -77,43 +77,74 @@ export default function DashboardPage() {
     );
   };
 
+  const renderAddBookmarkCard = () => {
+    return (
+      <button
+        type="button"
+        onClick={() =>
+          alert("Bookmark feature will be added in the next version.")
+        }
+        className="h-full min-h-[160px] rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
+      >
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-2xl font-semibold text-slate-700">
+          +
+        </div>
+
+        <h3 className="text-lg font-semibold text-slate-900">
+          Add Bookmark
+        </h3>
+
+        <p className="mt-2 text-sm text-slate-500">
+          Save a personal quick link for frequently used websites or tools.
+        </p>
+      </button>
+    );
+  };
+
   return (
     <div>
-      <div className="mb-6 flex items-center gap-3">
-        {loading ? (
-          <div className="text-sm text-slate-500">Loading user...</div>
-        ) : user ? (
-          <div className="text-sm text-slate-700">
-            <div>Hi {user.displayName} 👋</div>
-            <div className="text-slate-500">{user.email}</div>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-slate-900">My Workspace</h1>
+        <p className="mt-2 text-slate-600">
+          Access your authorized Lumens resources, training, and workspaces.
+        </p>
+      </div>
+
+      <section className="mb-12">
+        <div className="mb-5">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Official Resources
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Resources assigned to your account.
+          </p>
+        </div>
+
+        {visibleResources.length > 0 ? (
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {visibleResources.map((module) => renderResourceCard(module))}
           </div>
         ) : (
-          <div className="text-sm text-slate-500">Not signed in</div>
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+            No official resources are assigned to your account yet.
+          </div>
         )}
+      </section>
 
-        <button
-          onClick={signInWithGoogle}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-        >
-          Login with Google
-        </button>
+      <section id="bookmarks">
+        <div className="mb-5">
+          <h2 className="text-lg font-semibold text-slate-900">
+            My Bookmarks
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Your personal quick links.
+          </p>
+        </div>
 
-        <button
-          onClick={logout}
-          className="rounded-lg bg-slate-600 px-4 py-2 text-white hover:bg-slate-700"
-        >
-          Logout
-        </button>
-      </div>
-
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">Home</h1>
-        <p className="mt-2 text-slate-600">Welcome to Lumens platform.</p>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {visibleModules.map((module) => renderModuleCard(module))}
-      </div>
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {renderAddBookmarkCard()}
+        </div>
+      </section>
     </div>
   );
 }
