@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { signInWithGoogle } from "@/lib/auth";
 import { useUserProfile } from "@/lib/useUserProfile";
 import { getAllModules } from "@/lib/modules";
 import {
@@ -43,6 +44,8 @@ export default function DashboardPage() {
     null
   );
 
+  const [signingIn, setSigningIn] = useState(false);
+
   const enabledModules = profile?.enabledModules || [];
 
   const fetchBookmarks = async () => {
@@ -54,14 +57,16 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const fetchModules = async () => {
+      if (!user || !profile) return;
+
       const data = await getAllModules();
       setModules(data);
     };
 
-    if (!loading && profile) {
+    if (!loading && user && profile) {
       fetchModules();
     }
-  }, [loading, profile]);
+  }, [loading, user, profile]);
 
   useEffect(() => {
     if (!loading && user?.uid) {
@@ -87,6 +92,18 @@ export default function DashboardPage() {
     }
 
     return `https://${trimmed}`;
+  };
+
+  const handleLogin = async () => {
+    if (signingIn) return;
+
+    setSigningIn(true);
+
+    try {
+      await signInWithGoogle();
+    } finally {
+      setSigningIn(false);
+    }
   };
 
   const resetCreateForm = () => {
@@ -448,6 +465,34 @@ export default function DashboardPage() {
       </button>
     );
   };
+
+  if (loading) {
+    return <div className="text-sm text-slate-500">Loading workspace...</div>;
+  }
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <h1 className="text-2xl font-bold text-slate-900">
+          Welcome to Lumens Platform
+        </h1>
+
+        <p className="mt-3 text-slate-600">
+          Sign in with your authorized Google account to access Lumens resources,
+          training, and workspaces.
+        </p>
+
+        <button
+          type="button"
+          onClick={handleLogin}
+          disabled={signingIn}
+          className="mt-6 rounded-lg bg-blue-600 px-5 py-2 text-sm text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+        >
+          {signingIn ? "Signing in..." : "Login with Google"}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div>

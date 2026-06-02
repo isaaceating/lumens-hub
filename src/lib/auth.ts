@@ -3,30 +3,46 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signOut,
+  onAuthStateChanged,
 } from "firebase/auth";
 import app from "./firebase";
 
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// 👉 Google 登入
+let isSigningIn = false;
+
 export const signInWithGoogle = async () => {
+  if (isSigningIn) return null;
+
   try {
+    isSigningIn = true;
+
     const result = await signInWithPopup(auth, provider);
     return result.user;
-  } catch (error) {
+  } catch (error: any) {
+    const errorCode = error?.code;
+
+    const ignoredErrors = [
+      "auth/cancelled-popup-request",
+      "auth/popup-closed-by-user",
+    ];
+
+    if (ignoredErrors.includes(errorCode)) {
+      return null;
+    }
+
     console.error("Login error:", error);
+    return null;
+  } finally {
+    isSigningIn = false;
   }
 };
 
-// 👉 登出
 export const logout = async () => {
   await signOut(auth);
 };
 
-import { onAuthStateChanged } from "firebase/auth";
-
 export const onUserChange = (callback: any) => {
-  const auth = getAuth(app);
   return onAuthStateChanged(auth, callback);
 };
