@@ -6,6 +6,7 @@ import {
   getDocs,
   orderBy,
   query,
+  updateDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -33,6 +34,23 @@ export const createUserBookmark = async (
     name: data.name,
     url: data.url,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+};
+
+export const updateUserBookmark = async (
+  userId: string,
+  bookmarkId: string,
+  data: {
+    name: string;
+    url: string;
+  }
+) => {
+  const bookmarkRef = doc(db, "users", userId, "bookmarks", bookmarkId);
+
+  await updateDoc(bookmarkRef, {
+    name: data.name,
+    url: data.url,
     updatedAt: new Date().toISOString(),
   });
 };

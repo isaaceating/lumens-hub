@@ -8,6 +8,7 @@ import {
   createUserBookmark,
   deleteUserBookmark,
   getUserBookmarks,
+  updateUserBookmark,
 } from "@/lib/bookmarks";
 
 const getModuleHref = (module: any) => {
@@ -28,6 +29,16 @@ export default function DashboardPage() {
   const [bookmarkName, setBookmarkName] = useState("");
   const [bookmarkUrl, setBookmarkUrl] = useState("");
   const [savingBookmark, setSavingBookmark] = useState(false);
+
+  const [editingBookmarkId, setEditingBookmarkId] = useState<string | null>(
+    null
+  );
+  const [editBookmarkName, setEditBookmarkName] = useState("");
+  const [editBookmarkUrl, setEditBookmarkUrl] = useState("");
+  const [updatingBookmarkId, setUpdatingBookmarkId] = useState<string | null>(
+    null
+  );
+
   const [deletingBookmarkId, setDeletingBookmarkId] = useState<string | null>(
     null
   );
@@ -78,6 +89,18 @@ export default function DashboardPage() {
     return `https://${trimmed}`;
   };
 
+  const resetCreateForm = () => {
+    setBookmarkName("");
+    setBookmarkUrl("");
+    setShowBookmarkForm(false);
+  };
+
+  const resetEditForm = () => {
+    setEditingBookmarkId(null);
+    setEditBookmarkName("");
+    setEditBookmarkUrl("");
+  };
+
   const handleCreateBookmark = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -107,15 +130,56 @@ export default function DashboardPage() {
         url,
       });
 
-      setBookmarkName("");
-      setBookmarkUrl("");
-      setShowBookmarkForm(false);
+      resetCreateForm();
       await fetchBookmarks();
     } catch (error) {
       console.error("Failed to create bookmark:", error);
       alert("Failed to create bookmark. Please try again.");
     } finally {
       setSavingBookmark(false);
+    }
+  };
+
+  const startEditBookmark = (bookmark: any) => {
+    setShowBookmarkForm(false);
+    setEditingBookmarkId(bookmark.id);
+    setEditBookmarkName(bookmark.name || "");
+    setEditBookmarkUrl(bookmark.url || "");
+  };
+
+  const handleUpdateBookmark = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!user?.uid || !editingBookmarkId) return;
+
+    const name = editBookmarkName.trim();
+    const url = normalizeUrl(editBookmarkUrl);
+
+    if (!name) {
+      alert("Bookmark name is required.");
+      return;
+    }
+
+    if (!url) {
+      alert("Bookmark URL is required.");
+      return;
+    }
+
+    setUpdatingBookmarkId(editingBookmarkId);
+
+    try {
+      await updateUserBookmark(user.uid, editingBookmarkId, {
+        name,
+        url,
+      });
+
+      resetEditForm();
+      await fetchBookmarks();
+    } catch (error) {
+      console.error("Failed to update bookmark:", error);
+      alert("Failed to update bookmark. Please try again.");
+    } finally {
+      setUpdatingBookmarkId(null);
     }
   };
 
@@ -132,6 +196,11 @@ export default function DashboardPage() {
 
     try {
       await deleteUserBookmark(user.uid, bookmarkId);
+
+      if (editingBookmarkId === bookmarkId) {
+        resetEditForm();
+      }
+
       await fetchBookmarks();
     } catch (error) {
       console.error("Failed to delete bookmark:", error);
@@ -180,7 +249,78 @@ export default function DashboardPage() {
     );
   };
 
+  const renderEditBookmarkCard = (bookmark: any) => {
+    return (
+      <form
+        key={bookmark.id}
+        onSubmit={handleUpdateBookmark}
+        className="h-full min-h-[220px] rounded-2xl border border-blue-200 bg-white p-6 shadow-sm"
+      >
+        <h3 className="text-lg font-semibold text-slate-900">
+          Edit Bookmark
+        </h3>
+
+        <div className="mt-4 space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Name
+            </label>
+            <input
+              value={editBookmarkName}
+              onChange={(e) => setEditBookmarkName(e.target.value)}
+              placeholder="Lumens Website"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              URL
+            </label>
+            <input
+              value={editBookmarkUrl}
+              onChange={(e) => setEditBookmarkUrl(e.target.value)}
+              placeholder="https://www.mylumens.com"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-3">
+          <button
+            type="submit"
+            disabled={updatingBookmarkId === bookmark.id}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-slate-400"
+          >
+            {updatingBookmarkId === bookmark.id ? "Saving..." : "Save"}
+          </button>
+
+          <button
+            type="button"
+            onClick={resetEditForm}
+            className="rounded-lg bg-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-300"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleDeleteBookmark(bookmark.id)}
+            disabled={deletingBookmarkId === bookmark.id}
+            className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600 hover:bg-red-100 disabled:text-slate-400"
+          >
+            {deletingBookmarkId === bookmark.id ? "Deleting..." : "Delete"}
+          </button>
+        </div>
+      </form>
+    );
+  };
+
   const renderBookmarkCard = (bookmark: any) => {
+    if (editingBookmarkId === bookmark.id) {
+      return renderEditBookmarkCard(bookmark);
+    }
+
     return (
       <div
         key={bookmark.id}
@@ -205,14 +345,24 @@ export default function DashboardPage() {
           </p>
         </a>
 
-        <button
-          type="button"
-          onClick={() => handleDeleteBookmark(bookmark.id)}
-          disabled={deletingBookmarkId === bookmark.id}
-          className="absolute right-4 top-4 rounded-lg bg-white px-2 py-1 text-xs text-red-600 opacity-0 shadow-sm ring-1 ring-slate-200 transition hover:bg-red-50 disabled:text-slate-400 group-hover:opacity-100"
-        >
-          {deletingBookmarkId === bookmark.id ? "Deleting..." : "Delete"}
-        </button>
+        <div className="absolute right-4 top-4 flex gap-2 opacity-0 transition group-hover:opacity-100">
+          <button
+            type="button"
+            onClick={() => startEditBookmark(bookmark)}
+            className="rounded-lg bg-white px-2 py-1 text-xs text-blue-600 shadow-sm ring-1 ring-slate-200 hover:bg-blue-50"
+          >
+            Edit
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleDeleteBookmark(bookmark.id)}
+            disabled={deletingBookmarkId === bookmark.id}
+            className="rounded-lg bg-white px-2 py-1 text-xs text-red-600 shadow-sm ring-1 ring-slate-200 hover:bg-red-50 disabled:text-slate-400"
+          >
+            {deletingBookmarkId === bookmark.id ? "Deleting..." : "Delete"}
+          </button>
+        </div>
       </div>
     );
   };
@@ -265,11 +415,7 @@ export default function DashboardPage() {
 
             <button
               type="button"
-              onClick={() => {
-                setShowBookmarkForm(false);
-                setBookmarkName("");
-                setBookmarkUrl("");
-              }}
+              onClick={resetCreateForm}
               className="rounded-lg bg-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-300"
             >
               Cancel
@@ -282,7 +428,10 @@ export default function DashboardPage() {
     return (
       <button
         type="button"
-        onClick={() => setShowBookmarkForm(true)}
+        onClick={() => {
+          resetEditForm();
+          setShowBookmarkForm(true);
+        }}
         className="h-full min-h-[160px] rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
       >
         <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-2xl font-semibold text-slate-700">
