@@ -10,6 +10,7 @@ import {
   deleteUserBookmark,
   getUserBookmarks,
   updateUserBookmark,
+  updateUserBookmarkOrder,
 } from "@/lib/bookmarks";
 
 const getModuleHref = (module: any) => {
@@ -19,6 +20,18 @@ const getModuleHref = (module: any) => {
 
   return module.href || "#";
 };
+
+const ResourceIcon = () => (
+  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-xl text-blue-700">
+    ▦
+  </div>
+);
+
+const BookmarkIcon = () => (
+  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-xl text-slate-700">
+    ★
+  </div>
+);
 
 export default function DashboardPage() {
   const { user, profile, loading } = useUserProfile();
@@ -43,6 +56,11 @@ export default function DashboardPage() {
   const [deletingBookmarkId, setDeletingBookmarkId] = useState<string | null>(
     null
   );
+
+  const [draggingBookmarkId, setDraggingBookmarkId] = useState<string | null>(
+    null
+  );
+  const [reorderingBookmarks, setReorderingBookmarks] = useState(false);
 
   const [signingIn, setSigningIn] = useState(false);
 
@@ -227,14 +245,50 @@ export default function DashboardPage() {
     }
   };
 
+  const handleReorderBookmarks = async (targetBookmarkId: string) => {
+    if (
+      !user?.uid ||
+      !draggingBookmarkId ||
+      draggingBookmarkId === targetBookmarkId ||
+      reorderingBookmarks
+    ) {
+      return;
+    }
+
+    const currentIndex = bookmarks.findIndex(
+      (bookmark) => bookmark.id === draggingBookmarkId
+    );
+    const targetIndex = bookmarks.findIndex(
+      (bookmark) => bookmark.id === targetBookmarkId
+    );
+
+    if (currentIndex < 0 || targetIndex < 0) return;
+
+    const nextBookmarks = [...bookmarks];
+    const [movedBookmark] = nextBookmarks.splice(currentIndex, 1);
+    nextBookmarks.splice(targetIndex, 0, movedBookmark);
+
+    setBookmarks(nextBookmarks);
+    setDraggingBookmarkId(null);
+    setReorderingBookmarks(true);
+
+    try {
+      await updateUserBookmarkOrder(user.uid, nextBookmarks);
+    } catch (error) {
+      console.error("Failed to reorder bookmarks:", error);
+      alert("Failed to reorder bookmarks. Please refresh and try again.");
+      await fetchBookmarks();
+    } finally {
+      setReorderingBookmarks(false);
+    }
+  };
+
   const renderResourceCard = (module: any) => {
     const href = getModuleHref(module);
 
     const cardContent = (
       <div className="h-full rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-lg font-bold text-blue-700">
-          {module.name?.charAt(0)}
-        </div>
+        <ResourceIcon />
 
         <h3 className="text-lg font-semibold text-slate-900">
           {module.name}
@@ -341,17 +395,31 @@ export default function DashboardPage() {
     return (
       <div
         key={bookmark.id}
-        className="group relative h-full rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+        draggable
+        onDragStart={() => {
+          resetEditForm();
+          setShowBookmarkForm(false);
+          setDraggingBookmarkId(bookmark.id);
+        }}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={() => handleReorderBookmarks(bookmark.id)}
+        onDragEnd={() => setDraggingBookmarkId(null)}
+        className={`group relative h-full cursor-move rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md ${
+          draggingBookmarkId === bookmark.id ? "opacity-50" : ""
+        }`}
       >
         <a
           href={bookmark.url}
           target="_blank"
           rel="noopener noreferrer"
           className="block h-full"
+          onClick={(e) => {
+            if (draggingBookmarkId) {
+              e.preventDefault();
+            }
+          }}
         >
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-lg font-bold text-slate-700">
-            {bookmark.name?.charAt(0)}
-          </div>
+          <BookmarkIcon />
 
           <h3 className="text-lg font-semibold text-slate-900">
             {bookmark.name}
@@ -363,6 +431,10 @@ export default function DashboardPage() {
         </a>
 
         <div className="absolute right-4 top-4 flex gap-2 opacity-0 transition group-hover:opacity-100">
+          <span className="rounded-lg bg-slate-50 px-2 py-1 text-xs text-slate-500 shadow-sm ring-1 ring-slate-200">
+            Drag
+          </span>
+
           <button
             type="button"
             onClick={() => startEditBookmark(bookmark)}
@@ -474,7 +546,7 @@ export default function DashboardPage() {
     return (
       <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
         <h1 className="text-2xl font-bold text-slate-900">
-          Welcome to Lumens Platform
+          Welcome to Lumens Portal
         </h1>
 
         <p className="mt-3 text-slate-600">
@@ -525,13 +597,19 @@ export default function DashboardPage() {
       </section>
 
       <section id="bookmarks">
-        <div className="mb-5">
-          <h2 className="text-lg font-semibold text-slate-900">
-            My Bookmarks
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Your personal quick links.
-          </p>
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              My Bookmarks
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Your personal quick links. Drag cards to reorder them.
+            </p>
+          </div>
+
+          {reorderingBookmarks && (
+            <div className="text-sm text-slate-500">Saving order...</div>
+          )}
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">

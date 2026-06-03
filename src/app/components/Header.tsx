@@ -86,7 +86,7 @@ export default function Header() {
       }
 
       try {
-        const data = await getModuleById(moduleId);
+        const data = (await getModuleById(moduleId)) as any;
         setModuleName(data?.name || "Resource");
       } catch (error) {
         console.error("Failed to load module name:", error);

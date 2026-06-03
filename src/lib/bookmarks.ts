@@ -73,13 +73,14 @@ export const updateUserBookmarkOrder = async (
   bookmarks: any[]
 ) => {
   const batch = writeBatch(db);
+  const now = new Date().toISOString();
 
   bookmarks.forEach((bookmark, index) => {
     const bookmarkRef = doc(db, "users", userId, "bookmarks", bookmark.id);
 
     batch.update(bookmarkRef, {
       order: index + 1,
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
     });
   });
 
