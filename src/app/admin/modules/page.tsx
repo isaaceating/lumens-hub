@@ -9,6 +9,14 @@ const isNativeModule = (module: any) => {
   return module.moduleKind === "native" || module.locked === true;
 };
 
+const getSectionLabel = (module: any) => {
+  if (module.type === "admin") return "-";
+
+  if (module.section === "workspace") return "My Workspace";
+
+  return "Official Resources";
+};
+
 function AdminModulesContent() {
   const [modules, setModules] = useState<any[]>([]);
   const [loadingModules, setLoadingModules] = useState(true);
@@ -76,8 +84,8 @@ function AdminModulesContent() {
     }
 
     return (
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <table className="min-w-[1500px] w-full text-left text-sm">
           <thead className="bg-slate-50 text-slate-600">
             <tr>
               <th className="px-4 py-3 font-semibold">Order</th>
@@ -85,6 +93,7 @@ function AdminModulesContent() {
               <th className="px-4 py-3 font-semibold">Name</th>
               <th className="px-4 py-3 font-semibold">Type</th>
               <th className="px-4 py-3 font-semibold">Kind</th>
+              <th className="px-4 py-3 font-semibold">Section</th>
               <th className="px-4 py-3 font-semibold">URL / Route</th>
               <th className="px-4 py-3 font-semibold">Embed URL</th>
               <th className="px-4 py-3 font-semibold">Dashboard</th>
@@ -114,6 +123,10 @@ function AdminModulesContent() {
 
                 <td className="px-4 py-3 text-slate-600">
                   {module.moduleKind || "-"}
+                </td>
+
+                <td className="px-4 py-3 text-slate-600">
+                  {getSectionLabel(module)}
                 </td>
 
                 <td className="max-w-[220px] truncate px-4 py-3 text-slate-600">

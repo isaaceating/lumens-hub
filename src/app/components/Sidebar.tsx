@@ -20,11 +20,40 @@ export default function Sidebar() {
 
   const [modules, setModules] = useState<any[]>([]);
   const [collapsed, setCollapsed] = useState(false);
-  const [resourcesOpen, setResourcesOpen] = useState(true);
+  const [workspacesOpen, setWorkspacesOpen] = useState(
+    pathname.startsWith("/modules")
+  );
+  const [resourcesOpen, setResourcesOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(pathname.startsWith("/admin"));
+  const [currentHash, setCurrentHash] = useState("");
 
   const enabledModules = profile?.enabledModules || [];
   const isAdmin = profile?.role === "admin";
+
+  useEffect(() => {
+    const updateHash = () => {
+      if (typeof window !== "undefined") {
+        setCurrentHash(window.location.hash);
+      }
+    };
+
+    updateHash();
+    window.addEventListener("hashchange", updateHash);
+
+    return () => {
+      window.removeEventListener("hashchange", updateHash);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setCurrentHash(window.location.hash);
+    }
+
+    if (pathname.startsWith("/admin")) {
+      setAdminOpen(true);
+    }
+  }, [pathname]);
 
   useEffect(() => {
     const fetchModules = async () => {
@@ -36,12 +65,6 @@ export default function Sidebar() {
       fetchModules();
     }
   }, [loading, profile]);
-
-  useEffect(() => {
-    if (pathname.startsWith("/admin")) {
-      setAdminOpen(true);
-    }
-  }, [pathname]);
 
   const visibleModules = loading
     ? []
@@ -55,52 +78,128 @@ export default function Sidebar() {
         return enabledModules.includes(module.id);
       });
 
-  const resourceModules = visibleModules.filter(
+  const featureModules = visibleModules.filter(
     (module) => module.type === "feature"
   );
 
-  const adminModules = visibleModules.filter((module) => module.type === "admin");
+  const workspaceModules = featureModules.filter(
+    (module) => module.section === "workspace"
+  );
+
+  const resourceModules = featureModules.filter(
+    (module) => module.section !== "workspace"
+  );
+
+  const adminModules = visibleModules.filter(
+    (module) => module.type === "admin"
+  );
+
+  useEffect(() => {
+    if (!pathname.startsWith("/modules")) return;
+
+    const activeModule = featureModules.find((module) => {
+      const href = getModuleHref(module);
+      return pathname === href || pathname.startsWith(`${href}/`);
+    });
+
+    if (!activeModule) return;
+
+    if (activeModule.section === "workspace") {
+      setWorkspacesOpen(true);
+    } else {
+      setResourcesOpen(true);
+    }
+  }, [pathname, featureModules]);
 
   const baseItemClass =
     "flex items-center rounded-lg px-4 py-2 text-sm transition";
 
   const activeItemClass = "bg-blue-600 text-white";
   const inactiveItemClass = "text-slate-300 hover:bg-slate-800 hover:text-white";
+  const parentItemClass = "text-slate-300 hover:bg-slate-800 hover:text-white";
 
-  const renderInternalItem = (
-    label: string,
-    href: string,
-    icon: string,
-    exact = false
-  ) => {
-    const isActive = exact ? pathname === href : pathname.startsWith(href);
+  const goToBookmarks = () => {
+    if (typeof window === "undefined") return;
+
+    if (window.location.pathname === "/dashboard") {
+      const target = document.getElementById("bookmarks");
+
+      if (target) {
+        target.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }
+
+      window.history.replaceState(null, "", "/dashboard#bookmarks");
+      setCurrentHash("#bookmarks");
+      return;
+    }
+
+    window.location.href = "/dashboard#bookmarks";
+  };
+
+  const renderHomeItem = () => {
+    const isActive = pathname === "/dashboard" && currentHash !== "#bookmarks";
 
     if (collapsed) {
       return (
         <Link
-          key={href}
-          href={href}
-          title={label}
+          href="/dashboard"
+          title="Home"
+          onClick={() => setCurrentHash("")}
           className={`mb-1 flex items-center justify-center rounded-lg px-2 py-2 text-sm transition ${
             isActive ? activeItemClass : inactiveItemClass
           }`}
         >
-          <span>{icon}</span>
+          <span>⌂</span>
         </Link>
       );
     }
 
     return (
       <Link
-        key={href}
-        href={href}
+        href="/dashboard"
+        onClick={() => setCurrentHash("")}
         className={`${baseItemClass} mb-1 gap-3 ${
           isActive ? activeItemClass : inactiveItemClass
         }`}
       >
-        <span className="w-5 text-center">{icon}</span>
-        <span>{label}</span>
+        <span className="w-5 text-center">⌂</span>
+        <span>Home</span>
       </Link>
+    );
+  };
+
+  const renderBookmarkItem = () => {
+    const isActive = pathname === "/dashboard" && currentHash === "#bookmarks";
+
+    if (collapsed) {
+      return (
+        <button
+          type="button"
+          onClick={goToBookmarks}
+          title="My Bookmarks"
+          className={`mb-1 flex w-full items-center justify-center rounded-lg px-2 py-2 text-sm transition ${
+            isActive ? activeItemClass : inactiveItemClass
+          }`}
+        >
+          <span>★</span>
+        </button>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={goToBookmarks}
+        className={`${baseItemClass} mb-1 w-full gap-3 ${
+          isActive ? activeItemClass : inactiveItemClass
+        }`}
+      >
+        <span className="w-5 text-center">★</span>
+        <span>My Bookmarks</span>
+      </button>
     );
   };
 
@@ -108,8 +207,7 @@ export default function Sidebar() {
     label: string,
     icon: string,
     isOpen: boolean,
-    onClick: () => void,
-    isActive = false
+    onClick: () => void
   ) => {
     if (collapsed) {
       return (
@@ -120,9 +218,7 @@ export default function Sidebar() {
             onClick();
           }}
           title={label}
-          className={`mb-1 flex w-full items-center justify-center rounded-lg px-2 py-2 text-sm transition ${
-            isActive ? activeItemClass : inactiveItemClass
-          }`}
+          className={`mb-1 flex w-full items-center justify-center rounded-lg px-2 py-2 text-sm transition ${parentItemClass}`}
         >
           <span>{icon}</span>
         </button>
@@ -133,9 +229,7 @@ export default function Sidebar() {
       <button
         type="button"
         onClick={onClick}
-        className={`${baseItemClass} mb-1 w-full justify-between gap-3 ${
-          isActive ? activeItemClass : inactiveItemClass
-        }`}
+        className={`${baseItemClass} mb-1 w-full justify-between gap-3 ${parentItemClass}`}
       >
         <span className="flex min-w-0 items-center gap-3">
           <span className="w-5 text-center">{icon}</span>
@@ -147,17 +241,27 @@ export default function Sidebar() {
     );
   };
 
-  const renderModuleItem = (item: any) => {
+  const renderModuleItem = (
+    item: any,
+    options?: {
+      compact?: boolean;
+      exact?: boolean;
+    }
+  ) => {
     const href = getModuleHref(item);
-    const isActive = pathname === href || pathname.startsWith(`${href}/`);
+    const exact = options?.exact ?? false;
+
+    const isActive = exact
+      ? pathname === href
+      : pathname === href || pathname.startsWith(`${href}/`);
 
     const className = collapsed
       ? `mb-1 flex items-center justify-center rounded-lg px-2 py-2 text-sm transition ${
           isActive ? activeItemClass : inactiveItemClass
         }`
-      : `mb-1 block truncate rounded-lg px-4 py-2 pl-6 text-sm transition ${
-          isActive ? activeItemClass : inactiveItemClass
-        }`;
+      : `mb-1 block truncate rounded-lg px-4 py-2 text-sm transition ${
+          options?.compact ? "pl-8" : "pl-6"
+        } ${isActive ? activeItemClass : inactiveItemClass}`;
 
     if (item.moduleKind === "external") {
       return (
@@ -223,24 +327,39 @@ export default function Sidebar() {
 
       <nav className="flex-1 overflow-y-auto p-4">
         <div className="space-y-2">
-          {renderInternalItem("Home", "/dashboard", "⌂", true)}
+          {renderHomeItem()}
 
           <div>
-            {renderExpandableItem(
-              "Resources",
-              "▦",
-              resourcesOpen,
-              () => setResourcesOpen((prev) => !prev),
-              resourceModules.some((module) => {
-                const href = getModuleHref(module);
-                return pathname === href || pathname.startsWith(`${href}/`);
-              })
+            {renderExpandableItem("Workspaces", "◈", workspacesOpen, () =>
+              setWorkspacesOpen((prev) => !prev)
+            )}
+
+            {!collapsed && workspacesOpen && (
+              <div className="mt-1">
+                {workspaceModules.length > 0 ? (
+                  workspaceModules.map((module) =>
+                    renderModuleItem(module, { compact: true })
+                  )
+                ) : (
+                  <div className="px-8 py-2 text-sm text-slate-500">
+                    No workspaces available.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div>
+            {renderExpandableItem("Resources", "▦", resourcesOpen, () =>
+              setResourcesOpen((prev) => !prev)
             )}
 
             {!collapsed && resourcesOpen && (
               <div className="mt-1">
                 {resourceModules.length > 0 ? (
-                  resourceModules.map(renderModuleItem)
+                  resourceModules.map((module) =>
+                    renderModuleItem(module, { compact: true })
+                  )
                 ) : (
                   <div className="px-8 py-2 text-sm text-slate-500">
                     No resources available.
@@ -250,20 +369,23 @@ export default function Sidebar() {
             )}
           </div>
 
-          {renderInternalItem("My Bookmarks", "/dashboard#bookmarks", "★")}
+          {renderBookmarkItem()}
 
           {adminModules.length > 0 && (
             <div>
-              {renderExpandableItem(
-                "Admin",
-                "⚙",
-                adminOpen,
-                () => setAdminOpen((prev) => !prev),
-                pathname.startsWith("/admin")
+              {renderExpandableItem("Admin", "⚙", adminOpen, () =>
+                setAdminOpen((prev) => !prev)
               )}
 
               {!collapsed && adminOpen && (
-                <div className="mt-1">{adminModules.map(renderModuleItem)}</div>
+                <div className="mt-1">
+                  {adminModules.map((module) =>
+                    renderModuleItem(module, {
+                      compact: true,
+                      exact: module.href === "/admin",
+                    })
+                  )}
+                </div>
               )}
             </div>
           )}

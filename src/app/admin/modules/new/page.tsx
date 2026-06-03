@@ -14,6 +14,7 @@ function NewModuleContent() {
     name: "",
     description: "",
     moduleKind: "external",
+    section: "resource",
     href: "",
     embedUrl: "",
     showOnDashboard: true,
@@ -108,6 +109,7 @@ function NewModuleContent() {
         description: form.description.trim(),
         type: "feature",
         moduleKind: form.moduleKind,
+        section: form.section,
         href:
           form.moduleKind === "embedded"
             ? `/modules/${trimmedId}`
@@ -210,6 +212,24 @@ function NewModuleContent() {
             </select>
             <p className="mt-1 text-xs text-slate-500">
               Custom modules are always saved as feature modules.
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Dashboard Section
+            </label>
+            <select
+              name="section"
+              value={form.section}
+              onChange={handleChange}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            >
+              <option value="workspace">My Workspace</option>
+              <option value="resource">Official Resources</option>
+            </select>
+            <p className="mt-1 text-xs text-slate-500">
+              Choose where this module appears on the dashboard.
             </p>
           </div>
 

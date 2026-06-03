@@ -19,6 +19,7 @@ function EditModuleContent() {
     description: "",
     type: "feature",
     moduleKind: "external",
+    section: "resource",
     href: "",
     embedUrl: "",
     showOnDashboard: true,
@@ -28,6 +29,7 @@ function EditModuleContent() {
   });
 
   const isNativeModule = form.moduleKind === "native" || form.locked;
+  const isFeatureModule = form.type === "feature";
 
   useEffect(() => {
     const fetchModule = async () => {
@@ -48,6 +50,7 @@ function EditModuleContent() {
           description: data.description || "",
           type: data.type || "feature",
           moduleKind: data.moduleKind || "external",
+          section: data.section || "resource",
           href: data.href || "",
           embedUrl: data.embedUrl || "",
           showOnDashboard: data.showOnDashboard ?? true,
@@ -136,6 +139,7 @@ function EditModuleContent() {
         await updateModule(moduleId, {
           name: form.name.trim(),
           description: form.description.trim(),
+          section: isFeatureModule ? form.section : null,
           showOnDashboard: form.showOnDashboard,
           order: normalizedOrder,
           enabled: form.enabled,
@@ -160,6 +164,7 @@ function EditModuleContent() {
         description: form.description.trim(),
         type: "feature",
         moduleKind: form.moduleKind,
+        section: form.section,
         href:
           form.moduleKind === "embedded"
             ? `/modules/${moduleId}`
@@ -215,7 +220,8 @@ function EditModuleContent() {
 
         <h1 className="text-2xl font-bold text-slate-900">Edit Module</h1>
         <p className="mt-2 text-slate-600">
-          Manage module name, description, visibility, and URL settings.
+          Manage module name, description, visibility, section, and URL
+          settings.
         </p>
       </div>
 
@@ -263,6 +269,26 @@ function EditModuleContent() {
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
             />
           </div>
+
+          {isFeatureModule && (
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Dashboard Section
+              </label>
+              <select
+                name="section"
+                value={form.section}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              >
+                <option value="workspace">My Workspace</option>
+                <option value="resource">Official Resources</option>
+              </select>
+              <p className="mt-1 text-xs text-slate-500">
+                Choose where this module appears on the dashboard.
+              </p>
+            </div>
+          )}
 
           {isNativeModule ? (
             <>

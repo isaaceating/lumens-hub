@@ -21,6 +21,12 @@ const getModuleHref = (module: any) => {
   return module.href || "#";
 };
 
+const WorkspaceIcon = () => (
+  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-xl text-indigo-700">
+    ◈
+  </div>
+);
+
 const ResourceIcon = () => (
   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-xl text-blue-700">
     ▦
@@ -92,12 +98,43 @@ export default function DashboardPage() {
     }
   }, [loading, user?.uid]);
 
-  const visibleResources = modules.filter(
+  useEffect(() => {
+    if (loading) return;
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#bookmarks") return;
+
+    const scrollToBookmarks = () => {
+      const target = document.getElementById("bookmarks");
+
+      if (target) {
+        target.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }
+    };
+
+    const timer = window.setTimeout(scrollToBookmarks, 150);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [loading, user, bookmarks.length]);
+
+  const visibleFeatureModules = modules.filter(
     (module) =>
       module.enabled !== false &&
       module.showOnDashboard &&
       module.type === "feature" &&
       enabledModules.includes(module.id)
+  );
+
+  const workspaceModules = visibleFeatureModules.filter(
+    (module) => module.section === "workspace"
+  );
+
+  const resourceModules = visibleFeatureModules.filter(
+    (module) => module.section !== "workspace"
   );
 
   const normalizeUrl = (url: string) => {
@@ -283,19 +320,20 @@ export default function DashboardPage() {
     }
   };
 
-  const renderResourceCard = (module: any) => {
+  const renderModuleCard = (module: any, section: "workspace" | "resource") => {
     const href = getModuleHref(module);
+    const Icon = section === "workspace" ? WorkspaceIcon : ResourceIcon;
 
     const cardContent = (
       <div className="h-full rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-        <ResourceIcon />
+        <Icon />
 
         <h3 className="text-lg font-semibold text-slate-900">
           {module.name}
         </h3>
 
         <p className="mt-2 text-sm text-slate-500">
-          {module.description || "Open this resource."}
+          {module.description || "Open this module."}
         </p>
       </div>
     );
@@ -569,11 +607,35 @@ export default function DashboardPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">My Workspace</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Home</h1>
         <p className="mt-2 text-slate-600">
-          Access your authorized Lumens resources, training, and workspaces.
+          Access your authorized Lumens workspaces, resources, and personal
+          bookmarks.
         </p>
       </div>
+
+      <section className="mb-12">
+        <div className="mb-5">
+          <h2 className="text-lg font-semibold text-slate-900">
+            My Workspace
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Workspaces assigned to your account.
+          </p>
+        </div>
+
+        {workspaceModules.length > 0 ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            {workspaceModules.map((module) =>
+              renderModuleCard(module, "workspace")
+            )}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+            No workspaces are assigned to your account yet.
+          </div>
+        )}
+      </section>
 
       <section className="mb-12">
         <div className="mb-5">
@@ -581,13 +643,15 @@ export default function DashboardPage() {
             Official Resources
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Resources assigned to your account.
+            Official Lumens resources assigned to your account.
           </p>
         </div>
 
-        {visibleResources.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {visibleResources.map((module) => renderResourceCard(module))}
+        {resourceModules.length > 0 ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            {resourceModules.map((module) =>
+              renderModuleCard(module, "resource")
+            )}
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
@@ -596,7 +660,7 @@ export default function DashboardPage() {
         )}
       </section>
 
-      <section id="bookmarks">
+      <section id="bookmarks" className="scroll-mt-24">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
@@ -612,7 +676,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {bookmarks.map((bookmark) => renderBookmarkCard(bookmark))}
           {renderAddBookmarkCard()}
         </div>
