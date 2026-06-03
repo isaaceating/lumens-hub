@@ -2,40 +2,72 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import { signInWithGoogle } from "@/lib/auth";
 import { getModuleById } from "@/lib/modules";
 import { useUserProfile } from "@/lib/useUserProfile";
 
 export default function ModuleRendererPage() {
   const params = useParams();
-  const router = useRouter();
   const moduleId = params.moduleId as string;
 
-  const { profile, loading: profileLoading } = useUserProfile();
+  const { user, profile, loading: profileLoading } = useUserProfile();
 
   const [module, setModule] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchModule = async () => {
+      if (!moduleId) return;
+
       const data = await getModuleById(moduleId);
       setModule(data);
       setLoading(false);
     };
 
-    if (moduleId) {
-      fetchModule();
-    }
+    fetchModule();
   }, [moduleId]);
 
   if (loading || profileLoading) {
-    return <div className="text-slate-500">Loading module...</div>;
+    return <div className="text-slate-500">Loading resource...</div>;
+  }
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <h1 className="text-2xl font-bold text-slate-900">Login required</h1>
+        <p className="mt-3 text-slate-600">
+          Please sign in with an authorized Google account to access this
+          resource.
+        </p>
+
+        <button
+          type="button"
+          onClick={signInWithGoogle}
+          className="mt-6 rounded-lg bg-blue-600 px-5 py-2 text-sm text-white hover:bg-blue-700"
+        >
+          Login with Google
+        </button>
+      </div>
+    );
   }
 
   if (!module) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700">
-        Module not found.
+      <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <h1 className="text-2xl font-bold text-slate-900">
+          Resource not found
+        </h1>
+        <p className="mt-3 text-slate-600">
+          This resource does not exist or has been removed.
+        </p>
+
+        <Link
+          href="/dashboard"
+          className="mt-6 inline-block rounded-lg bg-blue-600 px-5 py-2 text-sm text-white hover:bg-blue-700"
+        >
+          Back to Home
+        </Link>
       </div>
     );
   }
@@ -45,37 +77,48 @@ export default function ModuleRendererPage() {
 
   if (!hasAccess) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700">
-        <h1 className="text-xl font-bold">Access denied</h1>
-        <p className="mt-2">
-          You do not have permission to access this module.
+      <div className="mx-auto max-w-xl rounded-2xl border border-red-200 bg-red-50 p-8 text-center shadow-sm">
+        <h1 className="text-2xl font-bold text-red-700">Access denied</h1>
+        <p className="mt-3 text-red-700">
+          Your account does not have permission to access this resource.
         </p>
 
-        <button
-          type="button"
-          onClick={() => router.push("/dashboard")}
-          className="mt-5 rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+        <Link
+          href="/dashboard"
+          className="mt-6 inline-block rounded-lg bg-blue-600 px-5 py-2 text-sm text-white hover:bg-blue-700"
         >
-          Back to Dashboard
-        </button>
+          Back to Home
+        </Link>
       </div>
     );
   }
 
   if (module.enabled === false) {
     return (
-      <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-6 text-yellow-700">
-        This module is currently disabled.
+      <div className="mx-auto max-w-xl rounded-2xl border border-yellow-200 bg-yellow-50 p-8 text-center shadow-sm">
+        <h1 className="text-2xl font-bold text-yellow-800">
+          Resource unavailable
+        </h1>
+        <p className="mt-3 text-yellow-700">
+          This resource is currently disabled.
+        </p>
+
+        <Link
+          href="/dashboard"
+          className="mt-6 inline-block rounded-lg bg-blue-600 px-5 py-2 text-sm text-white hover:bg-blue-700"
+        >
+          Back to Home
+        </Link>
       </div>
     );
   }
 
   if (module.moduleKind === "external") {
     return (
-      <div>
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <h1 className="text-2xl font-bold text-slate-900">{module.name}</h1>
         <p className="mt-2 text-slate-600">
-          This module opens in a new browser tab.
+          This resource opens in a new browser tab.
         </p>
 
         <a
@@ -93,8 +136,13 @@ export default function ModuleRendererPage() {
   if (module.moduleKind === "embedded") {
     if (!module.embedUrl) {
       return (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700">
-          Missing Embed URL.
+        <div className="mx-auto max-w-xl rounded-2xl border border-red-200 bg-red-50 p-8 text-center shadow-sm">
+          <h1 className="text-2xl font-bold text-red-700">
+            Missing Embed URL
+          </h1>
+          <p className="mt-3 text-red-700">
+            This embedded resource has not been configured correctly.
+          </p>
         </div>
       );
     }
@@ -112,17 +160,17 @@ export default function ModuleRendererPage() {
   }
 
   return (
-    <div>
+    <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
       <h1 className="text-2xl font-bold text-slate-900">{module.name}</h1>
       <p className="mt-2 text-slate-600">
-        This is a native Lumens HUB module.
+        This is a native Lumens Portal resource.
       </p>
 
       <Link
         href={module.href}
         className="mt-6 inline-block rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
       >
-        Open Module
+        Open Resource
       </Link>
     </div>
   );

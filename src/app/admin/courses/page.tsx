@@ -2,19 +2,33 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import AdminGuard from "@/app/components/AdminGuard";
 import { getCoursesByLevel } from "@/lib/courses";
 
-export default function AdminCoursesPage() {
+function AdminCoursesContent() {
   const [courses, setCourses] = useState<any[]>([]);
+  const [loadingCourses, setLoadingCourses] = useState(true);
 
   useEffect(() => {
     const fetchCourses = async () => {
-      const data = await getCoursesByLevel("level-1");
-      setCourses(data);
+      setLoadingCourses(true);
+
+      try {
+        const data = await getCoursesByLevel("level-1");
+        setCourses(data);
+      } catch (error) {
+        console.error("Failed to load courses:", error);
+      } finally {
+        setLoadingCourses(false);
+      }
     };
 
     fetchCourses();
   }, []);
+
+  if (loadingCourses) {
+    return <div className="text-slate-500">Loading courses...</div>;
+  }
 
   return (
     <div>
@@ -25,7 +39,7 @@ export default function AdminCoursesPage() {
           </h1>
 
           <p className="mt-2 text-slate-600">
-            Manage Lumens HUB training courses.
+            Manage Lumens Portal training courses.
           </p>
         </div>
 
@@ -88,9 +102,28 @@ export default function AdminCoursesPage() {
                 </td>
               </tr>
             ))}
+
+            {courses.length === 0 && (
+              <tr>
+                <td
+                  colSpan={5}
+                  className="px-6 py-8 text-center text-sm text-slate-500"
+                >
+                  No courses found.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
     </div>
+  );
+}
+
+export default function AdminCoursesPage() {
+  return (
+    <AdminGuard>
+      <AdminCoursesContent />
+    </AdminGuard>
   );
 }

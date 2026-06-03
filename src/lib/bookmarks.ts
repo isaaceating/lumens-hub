@@ -4,21 +4,32 @@ import {
   deleteDoc,
   doc,
   getDocs,
-  orderBy,
-  query,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "./firebase";
 
+const getSortValue = (bookmark: any) => {
+  if (typeof bookmark.order === "number") return bookmark.order;
+
+  if (bookmark.createdAt) {
+    const timestamp = new Date(bookmark.createdAt).getTime();
+    return Number.isNaN(timestamp) ? 999999999 : timestamp;
+  }
+
+  return 999999999;
+};
+
 export const getUserBookmarks = async (userId: string) => {
   const bookmarksRef = collection(db, "users", userId, "bookmarks");
-  const q = query(bookmarksRef, orderBy("createdAt", "asc"));
-  const snapshot = await getDocs(q);
+  const snapshot = await getDocs(bookmarksRef);
 
-  return snapshot.docs.map((doc) => ({
+  const bookmarks = snapshot.docs.map((doc) => ({
     id: doc.id,
     ...doc.data(),
   })) as any[];
+
+  return bookmarks.sort((a, b) => getSortValue(a) - getSortValue(b));
 };
 
 export const createUserBookmark = async (
@@ -26,6 +37,7 @@ export const createUserBookmark = async (
   data: {
     name: string;
     url: string;
+    order?: number;
   }
 ) => {
   const bookmarksRef = collection(db, "users", userId, "bookmarks");
@@ -33,6 +45,7 @@ export const createUserBookmark = async (
   await addDoc(bookmarksRef, {
     name: data.name,
     url: data.url,
+    order: data.order ?? Date.now(),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
@@ -53,6 +66,24 @@ export const updateUserBookmark = async (
     url: data.url,
     updatedAt: new Date().toISOString(),
   });
+};
+
+export const updateUserBookmarkOrder = async (
+  userId: string,
+  bookmarks: any[]
+) => {
+  const batch = writeBatch(db);
+
+  bookmarks.forEach((bookmark, index) => {
+    const bookmarkRef = doc(db, "users", userId, "bookmarks", bookmark.id);
+
+    batch.update(bookmarkRef, {
+      order: index + 1,
+      updatedAt: new Date().toISOString(),
+    });
+  });
+
+  await batch.commit();
 };
 
 export const deleteUserBookmark = async (

@@ -59,9 +59,7 @@ export default function Sidebar() {
     (module) => module.type === "feature"
   );
 
-  const adminModules = visibleModules.filter(
-    (module) => module.type === "admin"
-  );
+  const adminModules = visibleModules.filter((module) => module.type === "admin");
 
   const baseItemClass =
     "flex items-center rounded-lg px-4 py-2 text-sm transition";
@@ -208,10 +206,7 @@ export default function Sidebar() {
         ) : (
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="truncate text-xl font-bold">Lumens Platform</h1>
-              <p className="mt-1 truncate text-xs text-slate-400">
-                Resources · Training · Workspaces
-              </p>
+              <h1 className="truncate text-xl font-bold">Lumens Portal</h1>
             </div>
 
             <button

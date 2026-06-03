@@ -9,13 +9,22 @@ const isNativeModule = (module: any) => {
   return module.moduleKind === "native" || module.locked === true;
 };
 
-export default function AdminModulesPage() {
+function AdminModulesContent() {
   const [modules, setModules] = useState<any[]>([]);
+  const [loadingModules, setLoadingModules] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchModules = async () => {
-    const data = await getAllModules();
-    setModules(data);
+    setLoadingModules(true);
+
+    try {
+      const data = await getAllModules();
+      setModules(data);
+    } catch (error) {
+      console.error("Failed to load modules:", error);
+    } finally {
+      setLoadingModules(false);
+    }
   };
 
   useEffect(() => {
@@ -152,61 +161,70 @@ export default function AdminModulesPage() {
     );
   };
 
-  return (
-    <AdminGuard>
-      <div>
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">
-              Module Management
-            </h1>
-            <p className="mt-2 text-slate-600">
-              Manage custom modules and review native system modules.
-            </p>
-          </div>
+  if (loadingModules) {
+    return <div className="text-slate-500">Loading modules...</div>;
+  }
 
-          <Link
-            href="/admin/modules/new"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
-          >
-            Create Module
-          </Link>
+  return (
+    <div>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">
+            Module Management
+          </h1>
+          <p className="mt-2 text-slate-600">
+            Manage custom modules and review native system modules.
+          </p>
         </div>
 
-        <section className="mb-10">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Custom Modules
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Modules created from Admin, including external and embedded
-              modules.
-            </p>
-          </div>
-
-          {renderTable(customModules, {
-            showDelete: true,
-            emptyText: "No custom modules yet.",
-          })}
-        </section>
-
-        <section>
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Native / System Modules
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Built-in modules managed by code. These modules cannot be deleted
-              from this page.
-            </p>
-          </div>
-
-          {renderTable(nativeModules, {
-            showDelete: false,
-            emptyText: "No native system modules found.",
-          })}
-        </section>
+        <Link
+          href="/admin/modules/new"
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+        >
+          Create Module
+        </Link>
       </div>
+
+      <section className="mb-10">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Custom Modules
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Modules created from Admin, including external and embedded modules.
+          </p>
+        </div>
+
+        {renderTable(customModules, {
+          showDelete: true,
+          emptyText: "No custom modules yet.",
+        })}
+      </section>
+
+      <section>
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Native / System Modules
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Built-in modules managed by code. These modules cannot be deleted
+            from this page.
+          </p>
+        </div>
+
+        {renderTable(nativeModules, {
+          showDelete: false,
+          emptyText: "No native system modules found.",
+        })}
+      </section>
+    </div>
+  );
+}
+
+export default function AdminModulesPage() {
+  return (
+    <AdminGuard>
+      <AdminModulesContent />
     </AdminGuard>
   );
 }

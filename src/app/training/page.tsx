@@ -1,12 +1,17 @@
 "use client";
+
 import Link from "next/link";
+import { useState } from "react";
+import { signInWithGoogle } from "@/lib/auth";
+import { useUserProfile } from "@/lib/useUserProfile";
 
 const trainingLevels = [
   {
     id: "level-1",
     title: "Level 1",
     subtitle: "Foundation Training",
-    description: "Learn the basic product knowledge and Lumens solution positioning.",
+    description:
+      "Learn the basic product knowledge and Lumens solution positioning.",
     courses: 4,
     status: "Available",
   },
@@ -22,13 +27,55 @@ const trainingLevels = [
     id: "level-3",
     title: "Level 3",
     subtitle: "Advanced Certification",
-    description: "Complete advanced learning, exam, and certification requirements.",
+    description:
+      "Complete advanced learning, exam, and certification requirements.",
     courses: 6,
     status: "Coming Soon",
   },
 ];
 
 export default function TrainingPage() {
+  const { user, loading } = useUserProfile();
+  const [signingIn, setSigningIn] = useState(false);
+
+  const handleLogin = async () => {
+    if (signingIn) return;
+
+    setSigningIn(true);
+
+    try {
+      await signInWithGoogle();
+    } finally {
+      setSigningIn(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="text-sm text-slate-500">Loading training...</div>;
+  }
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <h1 className="text-2xl font-bold text-slate-900">Login required</h1>
+
+        <p className="mt-3 text-slate-600">
+          Please sign in with an authorized Google account to access Lumens
+          training and certification resources.
+        </p>
+
+        <button
+          type="button"
+          onClick={handleLogin}
+          disabled={signingIn}
+          className="mt-6 rounded-lg bg-blue-600 px-5 py-2 text-sm text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+        >
+          {signingIn ? "Signing in..." : "Login with Google"}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="mb-8">
@@ -60,9 +107,7 @@ export default function TrainingPage() {
               {level.subtitle}
             </h2>
 
-            <p className="mt-2 text-sm text-slate-500">
-              {level.description}
-            </p>
+            <p className="mt-2 text-sm text-slate-500">{level.description}</p>
 
             <div className="mt-6 text-sm text-slate-600">
               {level.courses} courses

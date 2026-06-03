@@ -2,23 +2,49 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { signInWithGoogle } from "@/lib/auth";
 import { useUserProfile } from "@/lib/useUserProfile";
 import { getCourseProgress } from "@/lib/progress";
 import { getCoursesByLevel } from "@/lib/courses";
 
 export default function Level1Page() {
-  const { user } = useUserProfile();
+  const { user, loading: userLoading } = useUserProfile();
+
   const [courses, setCourses] = useState<any[]>([]);
   const [completedCourses, setCompletedCourses] = useState<string[]>([]);
+  const [loadingCourses, setLoadingCourses] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
+
+  const handleLogin = async () => {
+    if (signingIn) return;
+
+    setSigningIn(true);
+
+    try {
+      await signInWithGoogle();
+    } finally {
+      setSigningIn(false);
+    }
+  };
 
   useEffect(() => {
     const fetchCourses = async () => {
-      const data = await getCoursesByLevel("level-1");
-      setCourses(data);
+      if (!user?.uid) return;
+
+      setLoadingCourses(true);
+
+      try {
+        const data = await getCoursesByLevel("level-1");
+        setCourses(data);
+      } catch (error) {
+        console.error("Failed to load courses:", error);
+      } finally {
+        setLoadingCourses(false);
+      }
     };
 
     fetchCourses();
-  }, []);
+  }, [user?.uid]);
 
   useEffect(() => {
     const fetchProgress = async () => {
@@ -38,7 +64,37 @@ export default function Level1Page() {
     };
 
     fetchProgress();
-  }, [user, courses]);
+  }, [user?.uid, courses]);
+
+  if (userLoading) {
+    return <div className="text-sm text-slate-500">Loading training...</div>;
+  }
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <h1 className="text-2xl font-bold text-slate-900">Login required</h1>
+
+        <p className="mt-3 text-slate-600">
+          Please sign in with an authorized Google account to access Level 1
+          Training.
+        </p>
+
+        <button
+          type="button"
+          onClick={handleLogin}
+          disabled={signingIn}
+          className="mt-6 rounded-lg bg-blue-600 px-5 py-2 text-sm text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+        >
+          {signingIn ? "Signing in..." : "Login with Google"}
+        </button>
+      </div>
+    );
+  }
+
+  if (loadingCourses) {
+    return <div className="text-sm text-slate-500">Loading courses...</div>;
+  }
 
   return (
     <div>
@@ -57,8 +113,7 @@ export default function Level1Page() {
           const courseId = course.id;
           const isCompleted = completedCourses.includes(courseId);
           const isUnlockedByProgress =
-            course.unlockAfter &&
-            completedCourses.includes(course.unlockAfter);
+            course.unlockAfter && completedCourses.includes(course.unlockAfter);
 
           const isAvailable =
             course.status === "Available" || isUnlockedByProgress;

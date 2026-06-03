@@ -1,17 +1,26 @@
 "use client";
 
-import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { signInWithGoogle } from "@/lib/auth";
 import { useUserProfile } from "@/lib/useUserProfile";
 
-export default function AdminGuard({
+const protectedPrefixes = ["/training", "/modules", "/admin"];
+
+const isProtectedPath = (pathname: string) => {
+  return protectedPrefixes.some((prefix) => pathname.startsWith(prefix));
+};
+
+export default function AuthGuard({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { user, profile, loading } = useUserProfile();
+  const pathname = usePathname();
+  const { user, loading } = useUserProfile();
   const [signingIn, setSigningIn] = useState(false);
+
+  const protectedPage = isProtectedPath(pathname);
 
   const handleLogin = async () => {
     if (signingIn) return;
@@ -25,14 +34,19 @@ export default function AdminGuard({
     }
   };
 
+  if (!protectedPage) {
+    return <>{children}</>;
+  }
+
   if (loading) {
-    return <div className="text-slate-500">Checking permission...</div>;
+    return <div className="text-sm text-slate-500">Checking access...</div>;
   }
 
   if (!user) {
     return (
       <div className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
         <h1 className="text-2xl font-bold text-slate-900">Login required</h1>
+
         <p className="mt-3 text-slate-600">
           Please sign in with an authorized Google account to access this page.
         </p>
@@ -45,26 +59,6 @@ export default function AdminGuard({
         >
           {signingIn ? "Signing in..." : "Login with Google"}
         </button>
-      </div>
-    );
-  }
-
-  if (!profile || profile.role !== "admin") {
-    return (
-      <div className="mx-auto max-w-xl rounded-2xl border border-red-200 bg-red-50 p-8 text-center shadow-sm">
-        <h1 className="text-2xl font-bold text-red-700">
-          Admin access required
-        </h1>
-        <p className="mt-3 text-red-700">
-          Your account does not have permission to access this admin page.
-        </p>
-
-        <Link
-          href="/dashboard"
-          className="mt-6 inline-block rounded-lg bg-blue-600 px-5 py-2 text-sm text-white hover:bg-blue-700"
-        >
-          Back to Home
-        </Link>
       </div>
     );
   }
