@@ -40,10 +40,8 @@ function EditTrainingProgramContent() {
   const [programForm, setProgramForm] = useState({
     title: "",
     description: "",
-    type: "product-training",
     ownerDepartment: "",
     status: "draft" as TrainingStatus,
-    coverImageUrl: "",
     order: 1 as number | "",
   });
 
@@ -108,10 +106,8 @@ function EditTrainingProgramContent() {
       setProgramForm({
         title: programData.title || "",
         description: programData.description || "",
-        type: programData.type || "product-training",
         ownerDepartment: programData.ownerDepartment || "",
         status: programData.status || "draft",
-        coverImageUrl: programData.coverImageUrl || "",
         order: programData.order ?? 1,
       });
 
@@ -191,10 +187,8 @@ function EditTrainingProgramContent() {
       await updateTrainingProgram(programId, {
         title: programForm.title.trim(),
         description: programForm.description.trim(),
-        type: programForm.type,
         ownerDepartment: programForm.ownerDepartment.trim(),
         status: programForm.status,
-        coverImageUrl: programForm.coverImageUrl.trim(),
         order: programForm.order === "" ? 0 : Number(programForm.order),
       });
 
@@ -462,26 +456,6 @@ function EditTrainingProgramContent() {
 
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">
-                Type
-              </label>
-              <select
-                name="type"
-                value={programForm.type}
-                onChange={handleProgramChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              >
-                <option value="product-training">Product Training</option>
-                <option value="technical-certification">
-                  Technical Certification
-                </option>
-                <option value="sales-certification">Sales Certification</option>
-                <option value="partner-training">Partner Training</option>
-                <option value="onboarding">Onboarding</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
                 Owner Department
               </label>
               <input
@@ -518,18 +492,6 @@ function EditTrainingProgramContent() {
                 name="order"
                 type="number"
                 value={programForm.order}
-                onChange={handleProgramChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Cover Image URL
-              </label>
-              <input
-                name="coverImageUrl"
-                value={programForm.coverImageUrl}
                 onChange={handleProgramChange}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
               />

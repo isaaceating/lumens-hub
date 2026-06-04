@@ -27,10 +27,8 @@ export type TrainingProgram = {
   id: string;
   title: string;
   description?: string;
-  type?: string;
   ownerDepartment?: string;
   status: TrainingStatus;
-  coverImageUrl?: string;
   order?: number;
   createdAt?: string;
   updatedAt?: string;
@@ -67,7 +65,9 @@ export type TrainingLesson = {
 
 const now = () => new Date().toISOString();
 
-const sortByOrder = <T extends { order?: number; title?: string }>(items: T[]) => {
+const sortByOrder = <T extends { order?: number; title?: string }>(
+  items: T[]
+) => {
   return [...items].sort((a, b) => {
     const orderDiff = (a.order || 0) - (b.order || 0);
 
@@ -258,10 +258,8 @@ export const duplicateTrainingProgram = async (programId: string) => {
   batch.set(programRef, {
     title: `${program.title} Copy`,
     description: program.description || "",
-    type: program.type || "product-training",
     ownerDepartment: program.ownerDepartment || "",
     status: "draft",
-    coverImageUrl: program.coverImageUrl || "",
     order: (program.order || 0) + 1,
     createdAt,
     updatedAt: createdAt,

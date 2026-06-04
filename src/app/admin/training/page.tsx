@@ -133,7 +133,6 @@ function AdminTrainingContent() {
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-500">
-                  <span>Type: {program.type || "-"}</span>
                   <span>Owner: {program.ownerDepartment || "-"}</span>
                   <span>Courses: {program.courseCount}</span>
                   <span>Lessons: {program.lessonCount}</span>

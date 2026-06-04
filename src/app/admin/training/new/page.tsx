@@ -13,10 +13,8 @@ function NewTrainingProgramContent() {
     id: "",
     title: "",
     description: "",
-    type: "product-training",
     ownerDepartment: "PDM",
     status: "draft" as TrainingStatus,
-    coverImageUrl: "",
     order: 1 as number | "",
   });
 
@@ -52,10 +50,8 @@ function NewTrainingProgramContent() {
       await createTrainingProgram(programId, {
         title: form.title.trim(),
         description: form.description.trim(),
-        type: form.type,
         ownerDepartment: form.ownerDepartment.trim(),
         status: form.status,
-        coverImageUrl: form.coverImageUrl.trim(),
         order: form.order === "" ? 0 : Number(form.order),
       });
 
@@ -126,24 +122,6 @@ function NewTrainingProgramContent() {
 
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">
-              Type
-            </label>
-            <select
-              name="type"
-              value={form.type}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            >
-              <option value="product-training">Product Training</option>
-              <option value="technical-certification">Technical Certification</option>
-              <option value="sales-certification">Sales Certification</option>
-              <option value="partner-training">Partner Training</option>
-              <option value="onboarding">Onboarding</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
               Owner Department
             </label>
             <input
@@ -180,19 +158,6 @@ function NewTrainingProgramContent() {
               type="number"
               value={form.order}
               onChange={handleChange}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Cover Image URL
-            </label>
-            <input
-              name="coverImageUrl"
-              value={form.coverImageUrl}
-              onChange={handleChange}
-              placeholder="https://..."
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
             />
           </div>
