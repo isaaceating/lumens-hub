@@ -93,6 +93,8 @@ const sortByOrder = <T extends { order?: number; title?: string }>(
   });
 };
 
+// Programs
+
 export const getTrainingPrograms = async () => {
   const snapshot = await getDocs(collection(db, "trainingPrograms"));
 
@@ -184,10 +186,29 @@ export const updateTrainingProgram = async (
   }
 };
 
+// Levels
+
 export const getTrainingLevelsByProgram = async (programId: string) => {
   const q = query(
     collection(db, "trainingLevels"),
     where("programId", "==", programId)
+  );
+
+  const snapshot = await getDocs(q);
+
+  const levels = snapshot.docs.map((item) => ({
+    id: item.id,
+    ...item.data(),
+  })) as TrainingLevel[];
+
+  return sortByOrder(levels);
+};
+
+export const getPublishedTrainingLevelsByProgram = async (programId: string) => {
+  const q = query(
+    collection(db, "trainingLevels"),
+    where("programId", "==", programId),
+    where("status", "==", "published")
   );
 
   const snapshot = await getDocs(q);
@@ -226,10 +247,31 @@ export const deleteTrainingLevel = async (levelId: string) => {
   await deleteDoc(doc(db, "trainingLevels", levelId));
 };
 
+// Courses
+
 export const getTrainingCoursesByProgram = async (programId: string) => {
   const q = query(
     collection(db, "trainingCourses"),
     where("programId", "==", programId)
+  );
+
+  const snapshot = await getDocs(q);
+
+  const courses = snapshot.docs.map((item) => ({
+    id: item.id,
+    ...item.data(),
+  })) as TrainingCourse[];
+
+  return sortByOrder(courses);
+};
+
+export const getPublishedTrainingCoursesByProgram = async (
+  programId: string
+) => {
+  const q = query(
+    collection(db, "trainingCourses"),
+    where("programId", "==", programId),
+    where("status", "==", "published")
   );
 
   const snapshot = await getDocs(q);
@@ -284,10 +326,31 @@ export const deleteTrainingCourse = async (courseId: string) => {
   await deleteDoc(doc(db, "trainingCourses", courseId));
 };
 
+// Lessons
+
 export const getTrainingLessonsByProgram = async (programId: string) => {
   const q = query(
     collection(db, "trainingLessons"),
     where("programId", "==", programId)
+  );
+
+  const snapshot = await getDocs(q);
+
+  const lessons = snapshot.docs.map((item) => ({
+    id: item.id,
+    ...item.data(),
+  })) as TrainingLesson[];
+
+  return sortByOrder(lessons);
+};
+
+export const getPublishedTrainingLessonsByProgram = async (
+  programId: string
+) => {
+  const q = query(
+    collection(db, "trainingLessons"),
+    where("programId", "==", programId),
+    where("status", "==", "published")
   );
 
   const snapshot = await getDocs(q);
@@ -342,6 +405,8 @@ export const deleteTrainingLesson = async (lessonId: string) => {
   await deleteDoc(doc(db, "trainingLessons", lessonId));
 };
 
+// Stats
+
 export const getTrainingProgramStats = async (programId: string) => {
   const levels = await getTrainingLevelsByProgram(programId);
   const courses = await getTrainingCoursesByProgram(programId);
@@ -353,6 +418,8 @@ export const getTrainingProgramStats = async (programId: string) => {
     lessonCount: lessons.length,
   };
 };
+
+// Duplicate
 
 export const duplicateTrainingProgram = async (programId: string) => {
   const program = await getTrainingProgramById(programId);
