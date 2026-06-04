@@ -16,8 +16,13 @@ const adminCards = [
   },
   {
     title: "Course Management",
-    description: "Create and manage training courses.",
+    description: "Create and manage legacy training courses.",
     href: "/admin/courses",
+  },
+  {
+    title: "Training Management",
+    description: "Create reusable training programs, courses, and lessons.",
+    href: "/admin/training",
   },
 ];
 
@@ -29,7 +34,7 @@ function AdminHomeContent() {
           Admin Dashboard
         </h1>
         <p className="mt-2 text-slate-600">
-          Manage Lumens Portal users, resources, and permissions.
+          Manage Lumens Portal users, resources, training, and permissions.
         </p>
       </div>
 
