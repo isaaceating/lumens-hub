@@ -17,6 +17,7 @@ import {
   TrainingCourse,
   TrainingLesson,
   TrainingLevel,
+  TrainingMaterial,
   TrainingProgram,
   TrainingStatus,
   updateTrainingCourse,
@@ -26,6 +27,27 @@ import {
 } from "@/lib/training";
 
 const statusOptions: TrainingStatus[] = ["draft", "published", "archived"];
+const materialTypeOptions = ["slides", "pdf", "doc", "video", "folder", "link"];
+
+const createEmptyMaterial = (order: number): TrainingMaterial => ({
+  title: "",
+  type: "link",
+  url: "",
+  buttonLabel: "Open Material",
+  order,
+});
+
+const normalizeMaterials = (materials: TrainingMaterial[]) => {
+  return materials
+    .map((material, index) => ({
+      title: material.title.trim(),
+      type: material.type || "link",
+      url: material.url.trim(),
+      buttonLabel: material.buttonLabel?.trim() || "Open Material",
+      order: material.order || index + 1,
+    }))
+    .filter((material) => material.title && material.url);
+};
 
 function EditTrainingProgramContent() {
   const params = useParams();
@@ -83,9 +105,7 @@ function EditTrainingProgramContent() {
     videoUrl: "",
     videoType: "youtube",
     duration: "",
-    materialTitle: "",
-    materialUrl: "",
-    materialButtonLabel: "Open Material",
+    materials: [createEmptyMaterial(1)] as TrainingMaterial[],
     allowComments: true,
     requireCompletion: true,
     status: "draft" as TrainingStatus,
@@ -114,6 +134,7 @@ function EditTrainingProgramContent() {
     videoUrl: "",
     videoType: "youtube",
     duration: "",
+    materials: [createEmptyMaterial(1)] as TrainingMaterial[],
     allowComments: true,
     requireCompletion: true,
     status: "draft" as TrainingStatus,
@@ -323,6 +344,86 @@ function EditTrainingProgramContent() {
     }));
   };
 
+  const updateLessonMaterial = (
+    index: number,
+    field: keyof TrainingMaterial,
+    value: string | number
+  ) => {
+    setLessonForm((prev) => {
+      const nextMaterials = [...prev.materials];
+
+      nextMaterials[index] = {
+        ...nextMaterials[index],
+        [field]: field === "order" ? Number(value) : value,
+      };
+
+      return {
+        ...prev,
+        materials: nextMaterials,
+      };
+    });
+  };
+
+  const addLessonMaterial = () => {
+    setLessonForm((prev) => ({
+      ...prev,
+      materials: [
+        ...prev.materials,
+        createEmptyMaterial(prev.materials.length + 1),
+      ],
+    }));
+  };
+
+  const removeLessonMaterial = (index: number) => {
+    setLessonForm((prev) => ({
+      ...prev,
+      materials:
+        prev.materials.length === 1
+          ? [createEmptyMaterial(1)]
+          : prev.materials.filter((_, materialIndex) => materialIndex !== index),
+    }));
+  };
+
+  const updateEditLessonMaterial = (
+    index: number,
+    field: keyof TrainingMaterial,
+    value: string | number
+  ) => {
+    setEditLessonForm((prev) => {
+      const nextMaterials = [...prev.materials];
+
+      nextMaterials[index] = {
+        ...nextMaterials[index],
+        [field]: field === "order" ? Number(value) : value,
+      };
+
+      return {
+        ...prev,
+        materials: nextMaterials,
+      };
+    });
+  };
+
+  const addEditLessonMaterial = () => {
+    setEditLessonForm((prev) => ({
+      ...prev,
+      materials: [
+        ...prev.materials,
+        createEmptyMaterial(prev.materials.length + 1),
+      ],
+    }));
+  };
+
+  const removeEditLessonMaterial = (index: number) => {
+    setEditLessonForm((prev) => ({
+      ...prev,
+      materials:
+        prev.materials.length === 1
+          ? [createEmptyMaterial(1)]
+          : prev.materials.filter((_, materialIndex) => materialIndex !== index),
+    }));
+  };
+
   const handleSaveProgram = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -449,19 +550,7 @@ function EditTrainingProgramContent() {
       return;
     }
 
-    const materials =
-      lessonForm.materialTitle.trim() && lessonForm.materialUrl.trim()
-        ? [
-            {
-              title: lessonForm.materialTitle.trim(),
-              type: "link",
-              url: lessonForm.materialUrl.trim(),
-              buttonLabel:
-                lessonForm.materialButtonLabel.trim() || "Open Material",
-              order: 1,
-            },
-          ]
-        : [];
+    const materials = normalizeMaterials(lessonForm.materials);
 
     setSavingLesson(true);
 
@@ -488,9 +577,7 @@ function EditTrainingProgramContent() {
         description: "",
         videoUrl: "",
         duration: "",
-        materialTitle: "",
-        materialUrl: "",
-        materialButtonLabel: "Open Material",
+        materials: [createEmptyMaterial(1)],
         order: lessons.length + 2,
       }));
 
@@ -542,6 +629,10 @@ function EditTrainingProgramContent() {
       videoUrl: lesson.videoUrl || "",
       videoType: lesson.videoType || "youtube",
       duration: lesson.duration || "",
+      materials:
+        lesson.materials && lesson.materials.length > 0
+          ? lesson.materials
+          : [createEmptyMaterial(1)],
       allowComments: lesson.allowComments ?? true,
       requireCompletion: lesson.requireCompletion ?? true,
       status: lesson.status || "draft",
@@ -568,8 +659,7 @@ function EditTrainingProgramContent() {
         title: editLevelForm.title.trim(),
         description: editLevelForm.description.trim(),
         status: editLevelForm.status,
-        order:
-          editLevelForm.order === "" ? 0 : Number(editLevelForm.order),
+        order: editLevelForm.order === "" ? 0 : Number(editLevelForm.order),
       });
 
       cancelEdit();
@@ -601,8 +691,7 @@ function EditTrainingProgramContent() {
         title: editCourseForm.title.trim(),
         description: editCourseForm.description.trim(),
         status: editCourseForm.status,
-        order:
-          editCourseForm.order === "" ? 0 : Number(editCourseForm.order),
+        order: editCourseForm.order === "" ? 0 : Number(editCourseForm.order),
       });
 
       const courseLessons = lessonsByCourse.get(courseId) || [];
@@ -656,11 +745,11 @@ function EditTrainingProgramContent() {
         videoUrl: editLessonForm.videoUrl.trim(),
         videoType: editLessonForm.videoType,
         duration: editLessonForm.duration.trim(),
+        materials: normalizeMaterials(editLessonForm.materials),
         allowComments: editLessonForm.allowComments,
         requireCompletion: editLessonForm.requireCompletion,
         status: editLessonForm.status,
-        order:
-          editLessonForm.order === "" ? 0 : Number(editLessonForm.order),
+        order: editLessonForm.order === "" ? 0 : Number(editLessonForm.order),
       });
 
       cancelEdit();
@@ -727,6 +816,210 @@ function EditTrainingProgramContent() {
       console.error("Failed to delete lesson:", error);
       alert("Failed to delete lesson.");
     }
+  };
+
+  const renderCreateMaterialsEditor = () => {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h4 className="font-semibold text-slate-900">Materials</h4>
+            <p className="mt-1 text-xs text-slate-500">
+              Add training PPT, PDF, recording, FAQ, folder, or external links.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={addLessonMaterial}
+            className="rounded-lg bg-slate-900 px-3 py-2 text-xs text-white hover:bg-slate-700"
+          >
+            + Add Material
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {lessonForm.materials.map((material, index) => (
+            <div
+              key={`create-material-${index}`}
+              className="rounded-xl border border-slate-200 bg-white p-4"
+            >
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h5 className="text-sm font-semibold text-slate-700">
+                  Material {index + 1}
+                </h5>
+
+                <button
+                  type="button"
+                  onClick={() => removeLessonMaterial(index)}
+                  className="text-xs text-red-600 hover:underline"
+                >
+                  Remove
+                </button>
+              </div>
+
+              <div className="grid gap-3">
+                <input
+                  value={material.title}
+                  onChange={(e) =>
+                    updateLessonMaterial(index, "title", e.target.value)
+                  }
+                  placeholder="Material title"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+
+                <select
+                  value={material.type}
+                  onChange={(e) =>
+                    updateLessonMaterial(index, "type", e.target.value)
+                  }
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                >
+                  {materialTypeOptions.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+
+                <input
+                  value={material.url}
+                  onChange={(e) =>
+                    updateLessonMaterial(index, "url", e.target.value)
+                  }
+                  placeholder="Material URL"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <input
+                    value={material.buttonLabel || ""}
+                    onChange={(e) =>
+                      updateLessonMaterial(index, "buttonLabel", e.target.value)
+                    }
+                    placeholder="Button label"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+
+                  <input
+                    type="number"
+                    value={material.order || index + 1}
+                    onChange={(e) =>
+                      updateLessonMaterial(index, "order", e.target.value)
+                    }
+                    placeholder="Order"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderEditMaterialsEditor = () => {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 md:col-span-2">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h4 className="font-semibold text-slate-900">Materials</h4>
+            <p className="mt-1 text-xs text-slate-500">
+              Manage multiple materials for this lesson.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={addEditLessonMaterial}
+            className="rounded-lg bg-slate-900 px-3 py-2 text-xs text-white hover:bg-slate-700"
+          >
+            + Add Material
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {editLessonForm.materials.map((material, index) => (
+            <div
+              key={`edit-material-${index}`}
+              className="rounded-xl border border-slate-200 bg-white p-4"
+            >
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h5 className="text-sm font-semibold text-slate-700">
+                  Material {index + 1}
+                </h5>
+
+                <button
+                  type="button"
+                  onClick={() => removeEditLessonMaterial(index)}
+                  className="text-xs text-red-600 hover:underline"
+                >
+                  Remove
+                </button>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <input
+                  value={material.title}
+                  onChange={(e) =>
+                    updateEditLessonMaterial(index, "title", e.target.value)
+                  }
+                  placeholder="Material title"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+
+                <select
+                  value={material.type}
+                  onChange={(e) =>
+                    updateEditLessonMaterial(index, "type", e.target.value)
+                  }
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                >
+                  {materialTypeOptions.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+
+                <input
+                  value={material.url}
+                  onChange={(e) =>
+                    updateEditLessonMaterial(index, "url", e.target.value)
+                  }
+                  placeholder="Material URL"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2"
+                />
+
+                <input
+                  value={material.buttonLabel || ""}
+                  onChange={(e) =>
+                    updateEditLessonMaterial(
+                      index,
+                      "buttonLabel",
+                      e.target.value
+                    )
+                  }
+                  placeholder="Button label"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+
+                <input
+                  type="number"
+                  value={material.order || index + 1}
+                  onChange={(e) =>
+                    updateEditLessonMaterial(index, "order", e.target.value)
+                  }
+                  placeholder="Order"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   const renderLevelEditForm = (level: TrainingLevel) => {
@@ -1047,6 +1340,8 @@ function EditTrainingProgramContent() {
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
             />
           </div>
+
+          {renderEditMaterialsEditor()}
 
           <div className="md:col-span-2 grid gap-3 md:grid-cols-2">
             <label className="flex items-center gap-2 text-sm text-slate-700">
@@ -1517,31 +1812,7 @@ function EditTrainingProgramContent() {
               />
             </div>
 
-            <div className="grid gap-4">
-              <input
-                name="materialTitle"
-                value={lessonForm.materialTitle}
-                onChange={handleLessonChange}
-                placeholder="Material title"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-
-              <input
-                name="materialUrl"
-                value={lessonForm.materialUrl}
-                onChange={handleLessonChange}
-                placeholder="Material URL"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-
-              <input
-                name="materialButtonLabel"
-                value={lessonForm.materialButtonLabel}
-                onChange={handleLessonChange}
-                placeholder="Button label"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
+            {renderCreateMaterialsEditor()}
 
             <div className="grid gap-3">
               <label className="flex items-center gap-2 text-sm text-slate-700">
