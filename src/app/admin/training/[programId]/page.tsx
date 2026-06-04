@@ -6,17 +6,22 @@ import AdminGuard from "@/app/components/AdminGuard";
 import {
   createTrainingCourse,
   createTrainingLesson,
+  createTrainingLevel,
   deleteTrainingCourse,
   deleteTrainingLesson,
+  deleteTrainingLevel,
   getTrainingCoursesByProgram,
   getTrainingLessonsByProgram,
+  getTrainingLevelsByProgram,
   getTrainingProgramById,
   TrainingCourse,
   TrainingLesson,
+  TrainingLevel,
   TrainingProgram,
   TrainingStatus,
   updateTrainingCourse,
   updateTrainingLesson,
+  updateTrainingLevel,
   updateTrainingProgram,
 } from "@/lib/training";
 
@@ -30,10 +35,12 @@ function EditTrainingProgramContent() {
   const [loading, setLoading] = useState(true);
   const [programFound, setProgramFound] = useState(true);
   const [savingProgram, setSavingProgram] = useState(false);
+  const [savingLevel, setSavingLevel] = useState(false);
   const [savingCourse, setSavingCourse] = useState(false);
   const [savingLesson, setSavingLesson] = useState(false);
 
   const [program, setProgram] = useState<TrainingProgram | null>(null);
+  const [levels, setLevels] = useState<TrainingLevel[]>([]);
   const [courses, setCourses] = useState<TrainingCourse[]>([]);
   const [lessons, setLessons] = useState<TrainingLesson[]>([]);
 
@@ -45,7 +52,15 @@ function EditTrainingProgramContent() {
     order: 1 as number | "",
   });
 
+  const [levelForm, setLevelForm] = useState({
+    title: "",
+    description: "",
+    status: "draft" as TrainingStatus,
+    order: 1 as number | "",
+  });
+
   const [courseForm, setCourseForm] = useState({
+    levelId: "",
     title: "",
     description: "",
     status: "draft" as TrainingStatus,
@@ -68,6 +83,24 @@ function EditTrainingProgramContent() {
     order: 1 as number | "",
   });
 
+  const coursesByLevel = useMemo(() => {
+    const map = new Map<string, TrainingCourse[]>();
+
+    levels.forEach((level) => {
+      map.set(level.id, []);
+    });
+
+    map.set("__unassigned__", []);
+
+    courses.forEach((course) => {
+      const levelKey = course.levelId || "__unassigned__";
+      const existing = map.get(levelKey) || [];
+      map.set(levelKey, [...existing, course]);
+    });
+
+    return map;
+  }, [levels, courses]);
+
   const lessonsByCourse = useMemo(() => {
     const map = new Map<string, TrainingLesson[]>();
 
@@ -83,6 +116,10 @@ function EditTrainingProgramContent() {
     return map;
   }, [courses, lessons]);
 
+  const selectedCourse = useMemo(() => {
+    return courses.find((course) => course.id === lessonForm.courseId) || null;
+  }, [courses, lessonForm.courseId]);
+
   const fetchData = async () => {
     if (!programId) return;
 
@@ -96,10 +133,12 @@ function EditTrainingProgramContent() {
         return;
       }
 
+      const levelData = await getTrainingLevelsByProgram(programId);
       const courseData = await getTrainingCoursesByProgram(programId);
       const lessonData = await getTrainingLessonsByProgram(programId);
 
       setProgram(programData);
+      setLevels(levelData);
       setCourses(courseData);
       setLessons(lessonData);
 
@@ -110,6 +149,11 @@ function EditTrainingProgramContent() {
         status: programData.status || "draft",
         order: programData.order ?? 1,
       });
+
+      setCourseForm((prev) => ({
+        ...prev,
+        levelId: levelData[0]?.id || "",
+      }));
 
       setLessonForm((prev) => ({
         ...prev,
@@ -135,6 +179,17 @@ function EditTrainingProgramContent() {
     const { name, value } = e.target;
 
     setProgramForm((prev) => ({
+      ...prev,
+      [name]: name === "order" ? (value === "" ? "" : Number(value)) : value,
+    }));
+  };
+
+  const handleLevelChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+
+    setLevelForm((prev) => ({
       ...prev,
       [name]: name === "order" ? (value === "" ? "" : Number(value)) : value,
     }));
@@ -202,8 +257,48 @@ function EditTrainingProgramContent() {
     }
   };
 
+  const handleCreateLevel = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!levelForm.title.trim()) {
+      alert("Level title is required.");
+      return;
+    }
+
+    setSavingLevel(true);
+
+    try {
+      await createTrainingLevel({
+        programId,
+        title: levelForm.title.trim(),
+        description: levelForm.description.trim(),
+        status: levelForm.status,
+        order: levelForm.order === "" ? 0 : Number(levelForm.order),
+      });
+
+      setLevelForm({
+        title: "",
+        description: "",
+        status: "draft",
+        order: levels.length + 2,
+      });
+
+      await fetchData();
+    } catch (error) {
+      console.error("Failed to create level:", error);
+      alert("Failed to create level.");
+    } finally {
+      setSavingLevel(false);
+    }
+  };
+
   const handleCreateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!courseForm.levelId) {
+      alert("Please create or select a level first.");
+      return;
+    }
 
     if (!courseForm.title.trim()) {
       alert("Course title is required.");
@@ -215,18 +310,20 @@ function EditTrainingProgramContent() {
     try {
       await createTrainingCourse({
         programId,
+        levelId: courseForm.levelId,
         title: courseForm.title.trim(),
         description: courseForm.description.trim(),
         status: courseForm.status,
         order: courseForm.order === "" ? 0 : Number(courseForm.order),
       });
 
-      setCourseForm({
+      setCourseForm((prev) => ({
+        ...prev,
         title: "",
         description: "",
         status: "draft",
         order: courses.length + 2,
-      });
+      }));
 
       await fetchData();
     } catch (error) {
@@ -250,6 +347,13 @@ function EditTrainingProgramContent() {
       return;
     }
 
+    const course = courses.find((item) => item.id === lessonForm.courseId);
+
+    if (!course) {
+      alert("Selected course was not found.");
+      return;
+    }
+
     const materials =
       lessonForm.materialTitle.trim() && lessonForm.materialUrl.trim()
         ? [
@@ -269,6 +373,7 @@ function EditTrainingProgramContent() {
     try {
       await createTrainingLesson({
         programId,
+        levelId: course.levelId || "",
         courseId: lessonForm.courseId,
         title: lessonForm.title.trim(),
         description: lessonForm.description.trim(),
@@ -300,6 +405,31 @@ function EditTrainingProgramContent() {
       alert("Failed to create lesson.");
     } finally {
       setSavingLesson(false);
+    }
+  };
+
+  const handleQuickEditLevel = async (level: TrainingLevel) => {
+    const nextTitle = window.prompt("Level title", level.title);
+
+    if (nextTitle === null) return;
+
+    const nextDescription = window.prompt(
+      "Level description",
+      level.description || ""
+    );
+
+    if (nextDescription === null) return;
+
+    try {
+      await updateTrainingLevel(level.id, {
+        title: nextTitle.trim() || level.title,
+        description: nextDescription.trim(),
+      });
+
+      await fetchData();
+    } catch (error) {
+      console.error("Failed to update level:", error);
+      alert("Failed to update level.");
     }
   };
 
@@ -347,6 +477,27 @@ function EditTrainingProgramContent() {
     } catch (error) {
       console.error("Failed to update lesson:", error);
       alert("Failed to update lesson.");
+    }
+  };
+
+  const handleDeleteLevel = async (level: TrainingLevel) => {
+    const levelCourses = coursesByLevel.get(level.id) || [];
+
+    if (levelCourses.length > 0) {
+      alert("Please delete courses under this level first.");
+      return;
+    }
+
+    const confirmed = window.confirm(`Delete level "${level.title}"?`);
+
+    if (!confirmed) return;
+
+    try {
+      await deleteTrainingLevel(level.id);
+      await fetchData();
+    } catch (error) {
+      console.error("Failed to delete level:", error);
+      alert("Failed to delete level.");
     }
   };
 
@@ -422,7 +573,7 @@ function EditTrainingProgramContent() {
           Edit Training Program
         </h1>
         <p className="mt-2 text-slate-600">
-          Manage program settings, courses, and lessons.
+          Manage program settings, levels, courses, and lessons.
         </p>
       </div>
 
@@ -436,7 +587,7 @@ function EditTrainingProgramContent() {
               Program Settings
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Program ID: {programId}
+              Program ID: {programId} · Frontend route: /training/{programId}
             </p>
           </div>
 
@@ -520,7 +671,88 @@ function EditTrainingProgramContent() {
           </button>
         </form>
 
-        <div className="grid gap-8 lg:grid-cols-2">
+        <div className="grid gap-8 xl:grid-cols-3">
+          <form
+            onSubmit={handleCreateLevel}
+            className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+          >
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Add Level
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Create a learning level under this program.
+              </p>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Level Title
+              </label>
+              <input
+                name="title"
+                value={levelForm.title}
+                onChange={handleLevelChange}
+                placeholder="Level 1: Basic"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Description
+              </label>
+              <textarea
+                name="description"
+                value={levelForm.description}
+                onChange={handleLevelChange}
+                rows={3}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Status
+                </label>
+                <select
+                  name="status"
+                  value={levelForm.status}
+                  onChange={handleLevelChange}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                >
+                  {statusOptions.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Order
+                </label>
+                <input
+                  name="order"
+                  type="number"
+                  value={levelForm.order}
+                  onChange={handleLevelChange}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={savingLevel}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-slate-400"
+            >
+              {savingLevel ? "Adding..." : "Add Level"}
+            </button>
+          </form>
+
           <form
             onSubmit={handleCreateCourse}
             className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
@@ -530,8 +762,27 @@ function EditTrainingProgramContent() {
                 Add Course
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Add a course under this training program.
+                Add a course under a selected level.
               </p>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Level
+              </label>
+              <select
+                name="levelId"
+                value={courseForm.levelId}
+                onChange={handleCourseChange}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              >
+                <option value="">Select level</option>
+                {levels.map((level) => (
+                  <option key={level.id} value={level.id}>
+                    {level.title}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -559,7 +810,7 @@ function EditTrainingProgramContent() {
               />
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Status
@@ -631,6 +882,12 @@ function EditTrainingProgramContent() {
                   </option>
                 ))}
               </select>
+
+              {selectedCourse && (
+                <p className="mt-1 text-xs text-slate-500">
+                  Level ID: {selectedCourse.levelId || "unassigned"}
+                </p>
+              )}
             </div>
 
             <div>
@@ -658,7 +915,7 @@ function EditTrainingProgramContent() {
               />
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Video Type
@@ -703,47 +960,33 @@ function EditTrainingProgramContent() {
               />
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Material Title
-                </label>
-                <input
-                  name="materialTitle"
-                  value={lessonForm.materialTitle}
-                  onChange={handleLessonChange}
-                  placeholder="Training PPT"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                />
-              </div>
+            <div className="grid gap-4">
+              <input
+                name="materialTitle"
+                value={lessonForm.materialTitle}
+                onChange={handleLessonChange}
+                placeholder="Material title"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Material URL
-                </label>
-                <input
-                  name="materialUrl"
-                  value={lessonForm.materialUrl}
-                  onChange={handleLessonChange}
-                  placeholder="https://..."
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                />
-              </div>
+              <input
+                name="materialUrl"
+                value={lessonForm.materialUrl}
+                onChange={handleLessonChange}
+                placeholder="Material URL"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Button Label
-                </label>
-                <input
-                  name="materialButtonLabel"
-                  value={lessonForm.materialButtonLabel}
-                  onChange={handleLessonChange}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                />
-              </div>
+              <input
+                name="materialButtonLabel"
+                value={lessonForm.materialButtonLabel}
+                onChange={handleLessonChange}
+                placeholder="Button label"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-3">
               <label className="flex items-center gap-2 text-sm text-slate-700">
                 <input
                   name="allowComments"
@@ -765,7 +1008,7 @@ function EditTrainingProgramContent() {
               </label>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Status
@@ -811,42 +1054,42 @@ function EditTrainingProgramContent() {
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-slate-900">
-              Course Structure
+              Program Structure
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Review, quick edit, and delete courses and lessons.
+              Review and manage the learning path by level, course, and lesson.
             </p>
           </div>
 
-          <div className="space-y-5">
-            {courses.map((course) => {
-              const courseLessons = lessonsByCourse.get(course.id) || [];
+          <div className="space-y-6">
+            {levels.map((level) => {
+              const levelCourses = coursesByLevel.get(level.id) || [];
 
               return (
                 <div
-                  key={course.id}
+                  key={level.id}
                   className="rounded-2xl border border-slate-200 p-5"
                 >
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
                       <div className="flex flex-wrap items-center gap-3">
-                        <h3 className="font-semibold text-slate-900">
-                          {course.order || 0}. {course.title}
+                        <h3 className="text-lg font-semibold text-slate-900">
+                          Level {level.order || 0}: {level.title}
                         </h3>
                         <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
-                          {course.status}
+                          {level.status}
                         </span>
                       </div>
 
                       <p className="mt-2 text-sm text-slate-500">
-                        {course.description || "No description."}
+                        {level.description || "No description."}
                       </p>
                     </div>
 
                     <div className="flex shrink-0 gap-2">
                       <button
                         type="button"
-                        onClick={() => handleQuickEditCourse(course)}
+                        onClick={() => handleQuickEditLevel(level)}
                         className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100"
                       >
                         Edit
@@ -854,7 +1097,7 @@ function EditTrainingProgramContent() {
 
                       <button
                         type="button"
-                        onClick={() => handleDeleteCourse(course)}
+                        onClick={() => handleDeleteLevel(level)}
                         className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 hover:bg-red-100"
                       >
                         Delete
@@ -862,77 +1105,131 @@ function EditTrainingProgramContent() {
                     </div>
                   </div>
 
-                  <div className="mt-5 space-y-3">
-                    {courseLessons.map((lesson) => (
-                      <div
-                        key={lesson.id}
-                        className="flex flex-col gap-3 rounded-xl bg-slate-50 p-4 md:flex-row md:items-start md:justify-between"
-                      >
-                        <div>
-                          <div className="flex flex-wrap items-center gap-3">
-                            <h4 className="font-medium text-slate-800">
-                              {lesson.order || 0}. {lesson.title}
-                            </h4>
-                            <span className="rounded-full bg-white px-2 py-1 text-xs text-slate-500">
-                              {lesson.status}
-                            </span>
-                            {lesson.duration && (
-                              <span className="text-xs text-slate-500">
-                                {lesson.duration}
-                              </span>
-                            )}
+                  <div className="mt-5 space-y-4">
+                    {levelCourses.map((course) => {
+                      const courseLessons = lessonsByCourse.get(course.id) || [];
+
+                      return (
+                        <div
+                          key={course.id}
+                          className="rounded-xl border border-slate-100 bg-slate-50 p-4"
+                        >
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-3">
+                                <h4 className="font-semibold text-slate-800">
+                                  Course {course.order || 0}: {course.title}
+                                </h4>
+                                <span className="rounded-full bg-white px-2 py-1 text-xs text-slate-500">
+                                  {course.status}
+                                </span>
+                              </div>
+
+                              <p className="mt-1 text-sm text-slate-500">
+                                {course.description || "No description."}
+                              </p>
+                            </div>
+
+                            <div className="flex shrink-0 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleQuickEditCourse(course)}
+                                className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100"
+                              >
+                                Edit
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCourse(course)}
+                                className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 hover:bg-red-100"
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </div>
 
-                          <p className="mt-1 text-sm text-slate-500">
-                            {lesson.description || "No description."}
-                          </p>
+                          <div className="mt-4 space-y-3">
+                            {courseLessons.map((lesson) => (
+                              <div
+                                key={lesson.id}
+                                className="flex flex-col gap-3 rounded-lg bg-white p-4 md:flex-row md:items-start md:justify-between"
+                              >
+                                <div>
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <h5 className="font-medium text-slate-800">
+                                      Lesson {lesson.order || 0}: {lesson.title}
+                                    </h5>
+                                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">
+                                      {lesson.status}
+                                    </span>
+                                    {lesson.duration && (
+                                      <span className="text-xs text-slate-500">
+                                        {lesson.duration}
+                                      </span>
+                                    )}
+                                  </div>
 
-                          {lesson.videoUrl && (
-                            <p className="mt-1 break-all text-xs text-blue-700">
-                              {lesson.videoUrl}
-                            </p>
-                          )}
+                                  <p className="mt-1 text-sm text-slate-500">
+                                    {lesson.description || "No description."}
+                                  </p>
 
-                          {lesson.materials && lesson.materials.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {lesson.materials.map((material, index) => (
-                                <a
-                                  key={`${lesson.id}-${index}`}
-                                  href={material.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="rounded-lg bg-white px-3 py-1 text-xs text-slate-700 hover:bg-slate-100"
-                                >
-                                  {material.buttonLabel || material.title}
-                                </a>
-                              ))}
-                            </div>
-                          )}
+                                  {lesson.videoUrl && (
+                                    <p className="mt-1 break-all text-xs text-blue-700">
+                                      {lesson.videoUrl}
+                                    </p>
+                                  )}
+
+                                  {lesson.materials && lesson.materials.length > 0 && (
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                      {lesson.materials.map((material, index) => (
+                                        <a
+                                          key={`${lesson.id}-${index}`}
+                                          href={material.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="rounded-lg bg-slate-100 px-3 py-1 text-xs text-slate-700 hover:bg-slate-200"
+                                        >
+                                          {material.buttonLabel || material.title}
+                                        </a>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex shrink-0 gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuickEditLesson(lesson)}
+                                    className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100"
+                                  >
+                                    Edit
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteLesson(lesson)}
+                                    className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 hover:bg-red-100"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+
+                            {courseLessons.length === 0 && (
+                              <div className="rounded-lg border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">
+                                No lessons under this course yet.
+                              </div>
+                            )}
+                          </div>
                         </div>
+                      );
+                    })}
 
-                        <div className="flex shrink-0 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleQuickEditLesson(lesson)}
-                            className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100"
-                          >
-                            Edit
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteLesson(lesson)}
-                            className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 hover:bg-red-100"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-
-                    {courseLessons.length === 0 && (
+                    {levelCourses.length === 0 && (
                       <div className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">
-                        No lessons under this course yet.
+                        No courses under this level yet.
                       </div>
                     )}
                   </div>
@@ -940,9 +1237,32 @@ function EditTrainingProgramContent() {
               );
             })}
 
-            {courses.length === 0 && (
+            {levels.length === 0 && (
               <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-                No courses yet. Add your first course above.
+                No levels yet. Add your first level above.
+              </div>
+            )}
+
+            {(coursesByLevel.get("__unassigned__") || []).length > 0 && (
+              <div className="rounded-2xl border border-orange-200 bg-orange-50 p-5">
+                <h3 className="font-semibold text-orange-800">
+                  Unassigned Courses
+                </h3>
+                <p className="mt-1 text-sm text-orange-700">
+                  These courses were created before the Level structure was added.
+                  Recreate them under a level or update them in the next editor version.
+                </p>
+
+                <div className="mt-4 space-y-3">
+                  {(coursesByLevel.get("__unassigned__") || []).map((course) => (
+                    <div
+                      key={course.id}
+                      className="rounded-xl bg-white p-4 text-sm text-slate-700"
+                    >
+                      {course.title}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

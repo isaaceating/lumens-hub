@@ -35,9 +35,21 @@ export type TrainingProgram = {
   updatedAt?: string;
 };
 
+export type TrainingLevel = {
+  id: string;
+  programId: string;
+  title: string;
+  description?: string;
+  status: TrainingStatus;
+  order?: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type TrainingCourse = {
   id: string;
   programId: string;
+  levelId?: string;
   title: string;
   description?: string;
   status: TrainingStatus;
@@ -49,6 +61,7 @@ export type TrainingCourse = {
 export type TrainingLesson = {
   id: string;
   programId: string;
+  levelId?: string;
   courseId: string;
   title: string;
   description?: string;
@@ -171,10 +184,68 @@ export const updateTrainingProgram = async (
   }
 };
 
+export const getTrainingLevelsByProgram = async (programId: string) => {
+  const q = query(
+    collection(db, "trainingLevels"),
+    where("programId", "==", programId)
+  );
+
+  const snapshot = await getDocs(q);
+
+  const levels = snapshot.docs.map((item) => ({
+    id: item.id,
+    ...item.data(),
+  })) as TrainingLevel[];
+
+  return sortByOrder(levels);
+};
+
+export const createTrainingLevel = async (
+  level: Omit<TrainingLevel, "id" | "createdAt" | "updatedAt">
+) => {
+  await addDoc(collection(db, "trainingLevels"), {
+    ...level,
+    createdAt: now(),
+    updatedAt: now(),
+  });
+};
+
+export const updateTrainingLevel = async (
+  levelId: string,
+  data: Partial<Omit<TrainingLevel, "id" | "createdAt">>
+) => {
+  const levelRef = doc(db, "trainingLevels", levelId);
+
+  await updateDoc(levelRef, {
+    ...data,
+    updatedAt: now(),
+  });
+};
+
+export const deleteTrainingLevel = async (levelId: string) => {
+  await deleteDoc(doc(db, "trainingLevels", levelId));
+};
+
 export const getTrainingCoursesByProgram = async (programId: string) => {
   const q = query(
     collection(db, "trainingCourses"),
     where("programId", "==", programId)
+  );
+
+  const snapshot = await getDocs(q);
+
+  const courses = snapshot.docs.map((item) => ({
+    id: item.id,
+    ...item.data(),
+  })) as TrainingCourse[];
+
+  return sortByOrder(courses);
+};
+
+export const getTrainingCoursesByLevel = async (levelId: string) => {
+  const q = query(
+    collection(db, "trainingCourses"),
+    where("levelId", "==", levelId)
   );
 
   const snapshot = await getDocs(q);
@@ -272,10 +343,12 @@ export const deleteTrainingLesson = async (lessonId: string) => {
 };
 
 export const getTrainingProgramStats = async (programId: string) => {
+  const levels = await getTrainingLevelsByProgram(programId);
   const courses = await getTrainingCoursesByProgram(programId);
   const lessons = await getTrainingLessonsByProgram(programId);
 
   return {
+    levelCount: levels.length,
     courseCount: courses.length,
     lessonCount: lessons.length,
   };
@@ -288,6 +361,7 @@ export const duplicateTrainingProgram = async (programId: string) => {
     throw new Error("Training program not found.");
   }
 
+  const levels = await getTrainingLevelsByProgram(programId);
   const courses = await getTrainingCoursesByProgram(programId);
   const lessons = await getTrainingLessonsByProgram(programId);
 
@@ -307,14 +381,33 @@ export const duplicateTrainingProgram = async (programId: string) => {
     updatedAt: createdAt,
   });
 
+  const levelIdMap = new Map<string, string>();
   const courseIdMap = new Map<string, string>();
+
+  levels.forEach((level) => {
+    const levelRef = doc(collection(db, "trainingLevels"));
+    levelIdMap.set(level.id, levelRef.id);
+
+    batch.set(levelRef, {
+      programId: copyId,
+      title: level.title,
+      description: level.description || "",
+      status: "draft",
+      order: level.order || 0,
+      createdAt,
+      updatedAt: createdAt,
+    });
+  });
 
   courses.forEach((course) => {
     const courseRef = doc(collection(db, "trainingCourses"));
     courseIdMap.set(course.id, courseRef.id);
 
+    const nextLevelId = course.levelId ? levelIdMap.get(course.levelId) : "";
+
     batch.set(courseRef, {
       programId: copyId,
+      levelId: nextLevelId || "",
       title: course.title,
       description: course.description || "",
       status: "draft",
@@ -326,6 +419,7 @@ export const duplicateTrainingProgram = async (programId: string) => {
 
   lessons.forEach((lesson) => {
     const nextCourseId = courseIdMap.get(lesson.courseId);
+    const nextLevelId = lesson.levelId ? levelIdMap.get(lesson.levelId) : "";
 
     if (!nextCourseId) return;
 
@@ -333,6 +427,7 @@ export const duplicateTrainingProgram = async (programId: string) => {
 
     batch.set(lessonRef, {
       programId: copyId,
+      levelId: nextLevelId || "",
       courseId: nextCourseId,
       title: lesson.title,
       description: lesson.description || "",
