@@ -12,6 +12,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import { syncTrainingProgramModule } from "./modules";
 
 export type TrainingStatus = "draft" | "published" | "archived";
 
@@ -90,6 +91,22 @@ export const getTrainingPrograms = async () => {
   return sortByOrder(programs);
 };
 
+export const getPublishedTrainingPrograms = async () => {
+  const q = query(
+    collection(db, "trainingPrograms"),
+    where("status", "==", "published")
+  );
+
+  const snapshot = await getDocs(q);
+
+  const programs = snapshot.docs.map((item) => ({
+    id: item.id,
+    ...item.data(),
+  })) as TrainingProgram[];
+
+  return sortByOrder(programs);
+};
+
 export const getTrainingProgramById = async (programId: string) => {
   const programRef = doc(db, "trainingPrograms", programId);
   const programSnap = await getDoc(programRef);
@@ -104,16 +121,35 @@ export const getTrainingProgramById = async (programId: string) => {
   } as TrainingProgram;
 };
 
+export const getPublishedTrainingProgramById = async (programId: string) => {
+  const program = await getTrainingProgramById(programId);
+
+  if (!program || program.status !== "published") {
+    return null;
+  }
+
+  return program;
+};
+
 export const createTrainingProgram = async (
   programId: string,
   program: Omit<TrainingProgram, "id" | "createdAt" | "updatedAt">
 ) => {
   const programRef = doc(db, "trainingPrograms", programId);
+  const timestamp = now();
 
   await setDoc(programRef, {
     ...program,
-    createdAt: now(),
-    updatedAt: now(),
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  });
+
+  await syncTrainingProgramModule({
+    id: programId,
+    title: program.title,
+    description: program.description,
+    status: program.status,
+    order: program.order,
   });
 };
 
@@ -127,6 +163,12 @@ export const updateTrainingProgram = async (
     ...data,
     updatedAt: now(),
   });
+
+  const updatedProgram = await getTrainingProgramById(programId);
+
+  if (updatedProgram) {
+    await syncTrainingProgramModule(updatedProgram);
+  }
 };
 
 export const getTrainingCoursesByProgram = async (programId: string) => {
@@ -308,6 +350,14 @@ export const duplicateTrainingProgram = async (programId: string) => {
   });
 
   await batch.commit();
+
+  await syncTrainingProgramModule({
+    id: copyId,
+    title: `${program.title} Copy`,
+    description: program.description || "",
+    status: "draft",
+    order: (program.order || 0) + 1,
+  });
 
   return copyId;
 };

@@ -9,6 +9,8 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 
+const now = () => new Date().toISOString();
+
 export const getAllModules = async () => {
   const snapshot = await getDocs(collection(db, "modules"));
 
@@ -39,8 +41,8 @@ export const createModule = async (moduleData: any) => {
 
   await setDoc(moduleRef, {
     ...moduleData,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: now(),
+    updatedAt: now(),
   });
 };
 
@@ -49,11 +51,50 @@ export const updateModule = async (moduleId: string, data: any) => {
 
   await updateDoc(moduleRef, {
     ...data,
-    updatedAt: new Date().toISOString(),
+    updatedAt: now(),
   });
 };
 
 export const deleteModule = async (moduleId: string) => {
   const moduleRef = doc(db, "modules", moduleId);
   await deleteDoc(moduleRef);
+};
+
+export const syncTrainingProgramModule = async (program: {
+  id: string;
+  title: string;
+  description?: string;
+  status?: string;
+  order?: number;
+}) => {
+  const moduleRef = doc(db, "modules", program.id);
+  const moduleSnap = await getDoc(moduleRef);
+
+  const isPublished = program.status === "published";
+  const timestamp = now();
+
+  const payload = {
+    name: program.title,
+    description: program.description || "Open this training program.",
+    type: "feature",
+    moduleKind: "native",
+    section: "resource",
+    href: `/training/${program.id}`,
+    embedUrl: null,
+    showOnDashboard: isPublished,
+    enabled: isPublished,
+    order: program.order || 0,
+    locked: true,
+    updatedAt: timestamp,
+  };
+
+  if (moduleSnap.exists()) {
+    await setDoc(moduleRef, payload, { merge: true });
+    return;
+  }
+
+  await setDoc(moduleRef, {
+    ...payload,
+    createdAt: timestamp,
+  });
 };

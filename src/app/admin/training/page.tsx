@@ -94,7 +94,8 @@ function AdminTrainingContent() {
             Training Management
           </h1>
           <p className="mt-2 text-slate-600">
-            Manage reusable training programs, courses, and lessons.
+            Create independent official training programs. Each published
+            program will appear as a native module under Official Resources.
           </p>
         </div>
 
@@ -126,6 +127,10 @@ function AdminTrainingContent() {
                   >
                     {program.status}
                   </span>
+
+                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+                    Native Module
+                  </span>
                 </div>
 
                 <p className="text-sm text-slate-500">
@@ -136,6 +141,7 @@ function AdminTrainingContent() {
                   <span>Owner: {program.ownerDepartment || "-"}</span>
                   <span>Courses: {program.courseCount}</span>
                   <span>Lessons: {program.lessonCount}</span>
+                  <span>Route: /training/{program.id}</span>
                 </div>
               </div>
 
@@ -145,6 +151,13 @@ function AdminTrainingContent() {
                   className="rounded-lg bg-blue-50 px-4 py-2 text-sm text-blue-700 hover:bg-blue-100"
                 >
                   Edit
+                </Link>
+
+                <Link
+                  href={`/training/${program.id}`}
+                  className="rounded-lg bg-slate-100 px-4 py-2 text-sm text-slate-700 hover:bg-slate-200"
+                >
+                  Preview
                 </Link>
 
                 <button
@@ -166,7 +179,7 @@ function AdminTrainingContent() {
               No training programs yet.
             </h2>
             <p className="mt-2 text-sm text-slate-500">
-              Create your first reusable training program.
+              Create your first official training program.
             </p>
 
             <Link
