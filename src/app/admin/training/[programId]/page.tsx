@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -33,7 +33,6 @@ const createEmptyMaterial = (order: number): TrainingMaterial => ({
   title: "",
   type: "link",
   url: "",
-  buttonLabel: "Open Material",
   order,
 });
 
@@ -43,7 +42,6 @@ const normalizeMaterials = (materials: TrainingMaterial[]) => {
       title: material.title.trim(),
       type: material.type || "link",
       url: material.url.trim(),
-      buttonLabel: material.buttonLabel?.trim() || "Open Material",
       order: material.order || index + 1,
     }))
     .filter((material) => material.title && material.url);
@@ -892,14 +890,6 @@ function EditTrainingProgramContent() {
                 />
 
                 <div className="grid gap-3 md:grid-cols-2">
-                  <input
-                    value={material.buttonLabel || ""}
-                    onChange={(e) =>
-                      updateLessonMaterial(index, "buttonLabel", e.target.value)
-                    }
-                    placeholder="Button label"
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  />
 
                   <input
                     type="number"
@@ -990,19 +980,6 @@ function EditTrainingProgramContent() {
                   }
                   placeholder="Material URL"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2"
-                />
-
-                <input
-                  value={material.buttonLabel || ""}
-                  onChange={(e) =>
-                    updateEditLessonMaterial(
-                      index,
-                      "buttonLabel",
-                      e.target.value
-                    )
-                  }
-                  placeholder="Button label"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 />
 
                 <input
@@ -1400,7 +1377,7 @@ function EditTrainingProgramContent() {
           onClick={() => router.push("/admin/training")}
           className="mb-4 text-sm text-blue-700 hover:underline"
         >
-          ← Back to Training Management
+          ??Back to Training Management
         </button>
 
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">
@@ -1418,7 +1395,7 @@ function EditTrainingProgramContent() {
           onClick={() => router.push("/admin/training")}
           className="mb-4 text-sm text-blue-700 hover:underline"
         >
-          ← Back to Training Management
+          ??Back to Training Management
         </button>
 
         <h1 className="text-2xl font-bold text-slate-900">
@@ -1439,7 +1416,7 @@ function EditTrainingProgramContent() {
               Program Settings
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Program ID: {programId} · Frontend route: /training/{programId}
+              Program ID: {programId} 繚 Frontend route: /training/{programId}
             </p>
           </div>
 
@@ -2027,8 +2004,7 @@ function EditTrainingProgramContent() {
                                                 rel="noopener noreferrer"
                                                 className="rounded-lg bg-slate-100 px-3 py-1 text-xs text-slate-700 hover:bg-slate-200"
                                               >
-                                                {material.buttonLabel ||
-                                                  material.title}
+                                                {material.title}
                                               </a>
                                             )
                                           )}
