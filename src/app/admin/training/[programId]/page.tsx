@@ -34,15 +34,24 @@ function EditTrainingProgramContent() {
 
   const [loading, setLoading] = useState(true);
   const [programFound, setProgramFound] = useState(true);
+
   const [savingProgram, setSavingProgram] = useState(false);
   const [savingLevel, setSavingLevel] = useState(false);
   const [savingCourse, setSavingCourse] = useState(false);
   const [savingLesson, setSavingLesson] = useState(false);
 
+  const [updatingLevelId, setUpdatingLevelId] = useState<string | null>(null);
+  const [updatingCourseId, setUpdatingCourseId] = useState<string | null>(null);
+  const [updatingLessonId, setUpdatingLessonId] = useState<string | null>(null);
+
   const [program, setProgram] = useState<TrainingProgram | null>(null);
   const [levels, setLevels] = useState<TrainingLevel[]>([]);
   const [courses, setCourses] = useState<TrainingCourse[]>([]);
   const [lessons, setLessons] = useState<TrainingLesson[]>([]);
+
+  const [editingLevelId, setEditingLevelId] = useState<string | null>(null);
+  const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
+  const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
 
   const [programForm, setProgramForm] = useState({
     title: "",
@@ -77,6 +86,34 @@ function EditTrainingProgramContent() {
     materialTitle: "",
     materialUrl: "",
     materialButtonLabel: "Open Material",
+    allowComments: true,
+    requireCompletion: true,
+    status: "draft" as TrainingStatus,
+    order: 1 as number | "",
+  });
+
+  const [editLevelForm, setEditLevelForm] = useState({
+    title: "",
+    description: "",
+    status: "draft" as TrainingStatus,
+    order: 1 as number | "",
+  });
+
+  const [editCourseForm, setEditCourseForm] = useState({
+    levelId: "",
+    title: "",
+    description: "",
+    status: "draft" as TrainingStatus,
+    order: 1 as number | "",
+  });
+
+  const [editLessonForm, setEditLessonForm] = useState({
+    courseId: "",
+    title: "",
+    description: "",
+    videoUrl: "",
+    videoType: "youtube",
+    duration: "",
     allowComments: true,
     requireCompletion: true,
     status: "draft" as TrainingStatus,
@@ -174,7 +211,9 @@ function EditTrainingProgramContent() {
   }, [programId]);
 
   const handleProgramChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value } = e.target;
 
@@ -185,7 +224,9 @@ function EditTrainingProgramContent() {
   };
 
   const handleLevelChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value } = e.target;
 
@@ -196,7 +237,9 @@ function EditTrainingProgramContent() {
   };
 
   const handleCourseChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value } = e.target;
 
@@ -207,7 +250,9 @@ function EditTrainingProgramContent() {
   };
 
   const handleLessonChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value } = e.target;
 
@@ -223,6 +268,56 @@ function EditTrainingProgramContent() {
     const { name, checked } = e.target;
 
     setLessonForm((prev) => ({
+      ...prev,
+      [name]: checked,
+    }));
+  };
+
+  const handleEditLevelChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    const { name, value } = e.target;
+
+    setEditLevelForm((prev) => ({
+      ...prev,
+      [name]: name === "order" ? (value === "" ? "" : Number(value)) : value,
+    }));
+  };
+
+  const handleEditCourseChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    const { name, value } = e.target;
+
+    setEditCourseForm((prev) => ({
+      ...prev,
+      [name]: name === "order" ? (value === "" ? "" : Number(value)) : value,
+    }));
+  };
+
+  const handleEditLessonChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    const { name, value } = e.target;
+
+    setEditLessonForm((prev) => ({
+      ...prev,
+      [name]: name === "order" ? (value === "" ? "" : Number(value)) : value,
+    }));
+  };
+
+  const handleEditLessonCheckboxChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const { name, checked } = e.target;
+
+    setEditLessonForm((prev) => ({
       ...prev,
       [name]: checked,
     }));
@@ -408,75 +503,173 @@ function EditTrainingProgramContent() {
     }
   };
 
-  const handleQuickEditLevel = async (level: TrainingLevel) => {
-    const nextTitle = window.prompt("Level title", level.title);
+  const startEditLevel = (level: TrainingLevel) => {
+    setEditingLevelId(level.id);
+    setEditingCourseId(null);
+    setEditingLessonId(null);
 
-    if (nextTitle === null) return;
+    setEditLevelForm({
+      title: level.title || "",
+      description: level.description || "",
+      status: level.status || "draft",
+      order: level.order ?? 1,
+    });
+  };
 
-    const nextDescription = window.prompt(
-      "Level description",
-      level.description || ""
-    );
+  const startEditCourse = (course: TrainingCourse) => {
+    setEditingCourseId(course.id);
+    setEditingLevelId(null);
+    setEditingLessonId(null);
 
-    if (nextDescription === null) return;
+    setEditCourseForm({
+      levelId: course.levelId || "",
+      title: course.title || "",
+      description: course.description || "",
+      status: course.status || "draft",
+      order: course.order ?? 1,
+    });
+  };
+
+  const startEditLesson = (lesson: TrainingLesson) => {
+    setEditingLessonId(lesson.id);
+    setEditingLevelId(null);
+    setEditingCourseId(null);
+
+    setEditLessonForm({
+      courseId: lesson.courseId || "",
+      title: lesson.title || "",
+      description: lesson.description || "",
+      videoUrl: lesson.videoUrl || "",
+      videoType: lesson.videoType || "youtube",
+      duration: lesson.duration || "",
+      allowComments: lesson.allowComments ?? true,
+      requireCompletion: lesson.requireCompletion ?? true,
+      status: lesson.status || "draft",
+      order: lesson.order ?? 1,
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingLevelId(null);
+    setEditingCourseId(null);
+    setEditingLessonId(null);
+  };
+
+  const handleSaveLevelEdit = async (levelId: string) => {
+    if (!editLevelForm.title.trim()) {
+      alert("Level title is required.");
+      return;
+    }
+
+    setUpdatingLevelId(levelId);
 
     try {
-      await updateTrainingLevel(level.id, {
-        title: nextTitle.trim() || level.title,
-        description: nextDescription.trim(),
+      await updateTrainingLevel(levelId, {
+        title: editLevelForm.title.trim(),
+        description: editLevelForm.description.trim(),
+        status: editLevelForm.status,
+        order:
+          editLevelForm.order === "" ? 0 : Number(editLevelForm.order),
       });
 
+      cancelEdit();
       await fetchData();
     } catch (error) {
       console.error("Failed to update level:", error);
       alert("Failed to update level.");
+    } finally {
+      setUpdatingLevelId(null);
     }
   };
 
-  const handleQuickEditCourse = async (course: TrainingCourse) => {
-    const nextTitle = window.prompt("Course title", course.title);
+  const handleSaveCourseEdit = async (courseId: string) => {
+    if (!editCourseForm.levelId) {
+      alert("Please select a level.");
+      return;
+    }
 
-    if (nextTitle === null) return;
+    if (!editCourseForm.title.trim()) {
+      alert("Course title is required.");
+      return;
+    }
 
-    const nextDescription = window.prompt(
-      "Course description",
-      course.description || ""
-    );
-
-    if (nextDescription === null) return;
+    setUpdatingCourseId(courseId);
 
     try {
-      await updateTrainingCourse(course.id, {
-        title: nextTitle.trim() || course.title,
-        description: nextDescription.trim(),
+      await updateTrainingCourse(courseId, {
+        levelId: editCourseForm.levelId,
+        title: editCourseForm.title.trim(),
+        description: editCourseForm.description.trim(),
+        status: editCourseForm.status,
+        order:
+          editCourseForm.order === "" ? 0 : Number(editCourseForm.order),
       });
 
+      const courseLessons = lessonsByCourse.get(courseId) || [];
+
+      await Promise.all(
+        courseLessons.map((lesson) =>
+          updateTrainingLesson(lesson.id, {
+            levelId: editCourseForm.levelId,
+          })
+        )
+      );
+
+      cancelEdit();
       await fetchData();
     } catch (error) {
       console.error("Failed to update course:", error);
       alert("Failed to update course.");
+    } finally {
+      setUpdatingCourseId(null);
     }
   };
 
-  const handleQuickEditLesson = async (lesson: TrainingLesson) => {
-    const nextTitle = window.prompt("Lesson title", lesson.title);
+  const handleSaveLessonEdit = async (lessonId: string) => {
+    if (!editLessonForm.courseId) {
+      alert("Please select a course.");
+      return;
+    }
 
-    if (nextTitle === null) return;
+    if (!editLessonForm.title.trim()) {
+      alert("Lesson title is required.");
+      return;
+    }
 
-    const nextVideoUrl = window.prompt("Video URL", lesson.videoUrl || "");
+    const targetCourse = courses.find(
+      (course) => course.id === editLessonForm.courseId
+    );
 
-    if (nextVideoUrl === null) return;
+    if (!targetCourse) {
+      alert("Selected course was not found.");
+      return;
+    }
+
+    setUpdatingLessonId(lessonId);
 
     try {
-      await updateTrainingLesson(lesson.id, {
-        title: nextTitle.trim() || lesson.title,
-        videoUrl: nextVideoUrl.trim(),
+      await updateTrainingLesson(lessonId, {
+        courseId: editLessonForm.courseId,
+        levelId: targetCourse.levelId || "",
+        title: editLessonForm.title.trim(),
+        description: editLessonForm.description.trim(),
+        videoUrl: editLessonForm.videoUrl.trim(),
+        videoType: editLessonForm.videoType,
+        duration: editLessonForm.duration.trim(),
+        allowComments: editLessonForm.allowComments,
+        requireCompletion: editLessonForm.requireCompletion,
+        status: editLessonForm.status,
+        order:
+          editLessonForm.order === "" ? 0 : Number(editLessonForm.order),
       });
 
+      cancelEdit();
       await fetchData();
     } catch (error) {
       console.error("Failed to update lesson:", error);
       alert("Failed to update lesson.");
+    } finally {
+      setUpdatingLessonId(null);
     }
   };
 
@@ -534,6 +727,370 @@ function EditTrainingProgramContent() {
       console.error("Failed to delete lesson:", error);
       alert("Failed to delete lesson.");
     }
+  };
+
+  const renderLevelEditForm = (level: TrainingLevel) => {
+    return (
+      <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
+        <h4 className="mb-4 font-semibold text-blue-900">Edit Level</h4>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Level Title
+            </label>
+            <input
+              name="title"
+              value={editLevelForm.title}
+              onChange={handleEditLevelChange}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Status
+            </label>
+            <select
+              name="status"
+              value={editLevelForm.status}
+              onChange={handleEditLevelChange}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            >
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Order
+            </label>
+            <input
+              name="order"
+              type="number"
+              value={editLevelForm.order}
+              onChange={handleEditLevelChange}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Description
+            </label>
+            <textarea
+              name="description"
+              value={editLevelForm.description}
+              onChange={handleEditLevelChange}
+              rows={3}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => handleSaveLevelEdit(level.id)}
+            disabled={updatingLevelId === level.id}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-slate-400"
+          >
+            {updatingLevelId === level.id ? "Saving..." : "Save Level"}
+          </button>
+
+          <button
+            type="button"
+            onClick={cancelEdit}
+            className="rounded-lg bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderCourseEditForm = (course: TrainingCourse) => {
+    return (
+      <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
+        <h5 className="mb-4 font-semibold text-blue-900">Edit Course</h5>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Level
+            </label>
+            <select
+              name="levelId"
+              value={editCourseForm.levelId}
+              onChange={handleEditCourseChange}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            >
+              <option value="">Select level</option>
+              {levels.map((level) => (
+                <option key={level.id} value={level.id}>
+                  {level.title}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-500">
+              Moving this course will also move all lessons under it.
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Course Title
+            </label>
+            <input
+              name="title"
+              value={editCourseForm.title}
+              onChange={handleEditCourseChange}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Status
+            </label>
+            <select
+              name="status"
+              value={editCourseForm.status}
+              onChange={handleEditCourseChange}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            >
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Order
+            </label>
+            <input
+              name="order"
+              type="number"
+              value={editCourseForm.order}
+              onChange={handleEditCourseChange}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Description
+            </label>
+            <textarea
+              name="description"
+              value={editCourseForm.description}
+              onChange={handleEditCourseChange}
+              rows={3}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => handleSaveCourseEdit(course.id)}
+            disabled={updatingCourseId === course.id}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-slate-400"
+          >
+            {updatingCourseId === course.id ? "Saving..." : "Save Course"}
+          </button>
+
+          <button
+            type="button"
+            onClick={cancelEdit}
+            className="rounded-lg bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderLessonEditForm = (lesson: TrainingLesson) => {
+    return (
+      <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
+        <h5 className="mb-4 font-semibold text-blue-900">Edit Lesson</h5>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Course
+            </label>
+            <select
+              name="courseId"
+              value={editLessonForm.courseId}
+              onChange={handleEditLessonChange}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            >
+              <option value="">Select course</option>
+              {courses.map((course) => (
+                <option key={course.id} value={course.id}>
+                  {course.title}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-500">
+              Moving this lesson will also update its level automatically.
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Lesson Title
+            </label>
+            <input
+              name="title"
+              value={editLessonForm.title}
+              onChange={handleEditLessonChange}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Video Type
+            </label>
+            <select
+              name="videoType"
+              value={editLessonForm.videoType}
+              onChange={handleEditLessonChange}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            >
+              <option value="youtube">YouTube</option>
+              <option value="google-drive">Google Drive</option>
+              <option value="vimeo">Vimeo</option>
+              <option value="external">External URL</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Duration
+            </label>
+            <input
+              name="duration"
+              value={editLessonForm.duration}
+              onChange={handleEditLessonChange}
+              placeholder="10 min"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Video URL
+            </label>
+            <input
+              name="videoUrl"
+              value={editLessonForm.videoUrl}
+              onChange={handleEditLessonChange}
+              placeholder="https://..."
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Status
+            </label>
+            <select
+              name="status"
+              value={editLessonForm.status}
+              onChange={handleEditLessonChange}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            >
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Order
+            </label>
+            <input
+              name="order"
+              type="number"
+              value={editLessonForm.order}
+              onChange={handleEditLessonChange}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Description
+            </label>
+            <textarea
+              name="description"
+              value={editLessonForm.description}
+              onChange={handleEditLessonChange}
+              rows={3}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div className="md:col-span-2 grid gap-3 md:grid-cols-2">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                name="allowComments"
+                type="checkbox"
+                checked={editLessonForm.allowComments}
+                onChange={handleEditLessonCheckboxChange}
+              />
+              Allow comments
+            </label>
+
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                name="requireCompletion"
+                type="checkbox"
+                checked={editLessonForm.requireCompletion}
+                onChange={handleEditLessonCheckboxChange}
+              />
+              Require completion
+            </label>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => handleSaveLessonEdit(lesson.id)}
+            disabled={updatingLessonId === lesson.id}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-slate-400"
+          >
+            {updatingLessonId === lesson.id ? "Saving..." : "Save Lesson"}
+          </button>
+
+          <button
+            type="button"
+            onClick={cancelEdit}
+            className="rounded-lg bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -1089,7 +1646,7 @@ function EditTrainingProgramContent() {
                     <div className="flex shrink-0 gap-2">
                       <button
                         type="button"
-                        onClick={() => handleQuickEditLevel(level)}
+                        onClick={() => startEditLevel(level)}
                         className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100"
                       >
                         Edit
@@ -1104,6 +1661,8 @@ function EditTrainingProgramContent() {
                       </button>
                     </div>
                   </div>
+
+                  {editingLevelId === level.id && renderLevelEditForm(level)}
 
                   <div className="mt-5 space-y-4">
                     {levelCourses.map((course) => {
@@ -1133,7 +1692,7 @@ function EditTrainingProgramContent() {
                             <div className="flex shrink-0 gap-2">
                               <button
                                 type="button"
-                                onClick={() => handleQuickEditCourse(course)}
+                                onClick={() => startEditCourse(course)}
                                 className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100"
                               >
                                 Edit
@@ -1149,71 +1708,84 @@ function EditTrainingProgramContent() {
                             </div>
                           </div>
 
+                          {editingCourseId === course.id &&
+                            renderCourseEditForm(course)}
+
                           <div className="mt-4 space-y-3">
                             {courseLessons.map((lesson) => (
                               <div
                                 key={lesson.id}
-                                className="flex flex-col gap-3 rounded-lg bg-white p-4 md:flex-row md:items-start md:justify-between"
+                                className="rounded-lg bg-white p-4"
                               >
-                                <div>
-                                  <div className="flex flex-wrap items-center gap-3">
-                                    <h5 className="font-medium text-slate-800">
-                                      Lesson {lesson.order || 0}: {lesson.title}
-                                    </h5>
-                                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">
-                                      {lesson.status}
-                                    </span>
-                                    {lesson.duration && (
-                                      <span className="text-xs text-slate-500">
-                                        {lesson.duration}
+                                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                  <div>
+                                    <div className="flex flex-wrap items-center gap-3">
+                                      <h5 className="font-medium text-slate-800">
+                                        Lesson {lesson.order || 0}:{" "}
+                                        {lesson.title}
+                                      </h5>
+                                      <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">
+                                        {lesson.status}
                                       </span>
+                                      {lesson.duration && (
+                                        <span className="text-xs text-slate-500">
+                                          {lesson.duration}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <p className="mt-1 text-sm text-slate-500">
+                                      {lesson.description || "No description."}
+                                    </p>
+
+                                    {lesson.videoUrl && (
+                                      <p className="mt-1 break-all text-xs text-blue-700">
+                                        {lesson.videoUrl}
+                                      </p>
                                     )}
+
+                                    {lesson.materials &&
+                                      lesson.materials.length > 0 && (
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                          {lesson.materials.map(
+                                            (material, index) => (
+                                              <a
+                                                key={`${lesson.id}-${index}`}
+                                                href={material.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="rounded-lg bg-slate-100 px-3 py-1 text-xs text-slate-700 hover:bg-slate-200"
+                                              >
+                                                {material.buttonLabel ||
+                                                  material.title}
+                                              </a>
+                                            )
+                                          )}
+                                        </div>
+                                      )}
                                   </div>
 
-                                  <p className="mt-1 text-sm text-slate-500">
-                                    {lesson.description || "No description."}
-                                  </p>
+                                  <div className="flex shrink-0 gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => startEditLesson(lesson)}
+                                      className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100"
+                                    >
+                                      Edit
+                                    </button>
 
-                                  {lesson.videoUrl && (
-                                    <p className="mt-1 break-all text-xs text-blue-700">
-                                      {lesson.videoUrl}
-                                    </p>
-                                  )}
-
-                                  {lesson.materials && lesson.materials.length > 0 && (
-                                    <div className="mt-2 flex flex-wrap gap-2">
-                                      {lesson.materials.map((material, index) => (
-                                        <a
-                                          key={`${lesson.id}-${index}`}
-                                          href={material.url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="rounded-lg bg-slate-100 px-3 py-1 text-xs text-slate-700 hover:bg-slate-200"
-                                        >
-                                          {material.buttonLabel || material.title}
-                                        </a>
-                                      ))}
-                                    </div>
-                                  )}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteLesson(lesson)}
+                                      className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 hover:bg-red-100"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
                                 </div>
 
-                                <div className="flex shrink-0 gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleQuickEditLesson(lesson)}
-                                    className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100"
-                                  >
-                                    Edit
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteLesson(lesson)}
-                                    className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 hover:bg-red-100"
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
+                                {editingLessonId === lesson.id &&
+                                  renderLessonEditForm(lesson)}
                               </div>
                             ))}
 
@@ -1249,19 +1821,22 @@ function EditTrainingProgramContent() {
                   Unassigned Courses
                 </h3>
                 <p className="mt-1 text-sm text-orange-700">
-                  These courses were created before the Level structure was added.
-                  Recreate them under a level or update them in the next editor version.
+                  These courses were created before the Level structure was
+                  added. Recreate them under a level or update them in the next
+                  editor version.
                 </p>
 
                 <div className="mt-4 space-y-3">
-                  {(coursesByLevel.get("__unassigned__") || []).map((course) => (
-                    <div
-                      key={course.id}
-                      className="rounded-xl bg-white p-4 text-sm text-slate-700"
-                    >
-                      {course.title}
-                    </div>
-                  ))}
+                  {(coursesByLevel.get("__unassigned__") || []).map(
+                    (course) => (
+                      <div
+                        key={course.id}
+                        className="rounded-xl bg-white p-4 text-sm text-slate-700"
+                      >
+                        {course.title}
+                      </div>
+                    )
+                  )}
                 </div>
               </div>
             )}
