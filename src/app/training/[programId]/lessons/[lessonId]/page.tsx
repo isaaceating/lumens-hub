@@ -175,6 +175,159 @@ function VideoBlock({ lesson }: { lesson: TrainingLesson }) {
   );
 }
 
+function CommentCard({
+  comment,
+  replies,
+  canDelete,
+  commentsEnabled,
+  isReplying,
+  replyMessage,
+  postingReply,
+  deletingCommentId,
+  onDelete,
+  onStartReply,
+  onCancelReply,
+  onReplyMessageChange,
+  onSubmitReply,
+}: {
+  comment: TrainingComment;
+  replies: TrainingComment[];
+  canDelete: boolean;
+  commentsEnabled: boolean;
+  isReplying: boolean;
+  replyMessage: string;
+  postingReply: boolean;
+  deletingCommentId: string | null;
+  onDelete: (comment: TrainingComment) => void;
+  onStartReply: (commentId: string) => void;
+  onCancelReply: () => void;
+  onReplyMessageChange: (commentId: string, value: string) => void;
+  onSubmitReply: (comment: TrainingComment) => void;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="font-medium text-slate-900">
+            {comment.userName || "Lumens user"}
+          </div>
+          <div className="text-xs text-slate-500">{comment.userEmail}</div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-slate-500">
+            {formatDateTime(comment.createdAt)}
+          </span>
+
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => onDelete(comment)}
+              disabled={deletingCommentId === comment.id}
+              className="text-xs text-red-600 hover:underline disabled:text-slate-400"
+            >
+              {deletingCommentId === comment.id ? "Deleting..." : "Delete"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">
+        {comment.message}
+      </p>
+
+      {commentsEnabled && (
+        <button
+          type="button"
+          onClick={() => onStartReply(comment.id)}
+          className="mt-3 text-xs font-medium text-blue-700 hover:underline"
+        >
+          Reply
+        </button>
+      )}
+
+      {isReplying && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSubmitReply(comment);
+          }}
+          className="mt-3 rounded-xl border border-blue-100 bg-white p-3"
+        >
+          <textarea
+            value={replyMessage}
+            onChange={(e) => onReplyMessageChange(comment.id, e.target.value)}
+            rows={2}
+            placeholder={`Reply to ${comment.userName || "this comment"}...`}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          />
+
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onCancelReply}
+              className="rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-700 hover:bg-slate-200"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              disabled={postingReply}
+              className="rounded-lg bg-blue-600 px-3 py-2 text-xs text-white hover:bg-blue-700 disabled:bg-slate-400"
+            >
+              {postingReply ? "Posting..." : "Post Reply"}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {replies.length > 0 && (
+        <div className="mt-4 space-y-3 border-l-2 border-slate-200 pl-4">
+          {replies.map((reply) => (
+            <div
+              key={reply.id}
+              className="rounded-xl border border-slate-200 bg-white p-3"
+            >
+              <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="font-medium text-slate-900">
+                    {reply.userName || "Lumens user"}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {reply.userEmail}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-slate-500">
+                    {formatDateTime(reply.createdAt)}
+                  </span>
+
+                  {(canDelete || reply.userId === comment.userId) && (
+                    <button
+                      type="button"
+                      onClick={() => onDelete(reply)}
+                      disabled={deletingCommentId === reply.id}
+                      className="text-xs text-red-600 hover:underline disabled:text-slate-400"
+                    >
+                      {deletingCommentId === reply.id ? "Deleting..." : "Delete"}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                {reply.message}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LessonDetailContent() {
   const params = useParams();
   const programId = params.programId as string;
@@ -184,15 +337,42 @@ function LessonDetailContent() {
   const [content, setContent] = useState<LessonContent | null>(null);
   const [comments, setComments] = useState<TrainingComment[]>([]);
   const [commentMessage, setCommentMessage] = useState("");
+  const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(
+    null
+  );
+  const [replyMessages, setReplyMessages] = useState<Record<string, string>>(
+    {}
+  );
   const [loading, setLoading] = useState(true);
   const [commentsLoading, setCommentsLoading] = useState(true);
   const [postingComment, setPostingComment] = useState(false);
+  const [postingReplyCommentId, setPostingReplyCommentId] = useState<
+    string | null
+  >(null);
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(
     null
   );
   const [notFound, setNotFound] = useState(false);
 
   const isAdmin = profile?.role === "admin";
+
+  const mainComments = useMemo(() => {
+    return comments.filter((comment) => !comment.parentCommentId);
+  }, [comments]);
+
+  const repliesByParent = useMemo(() => {
+    const map = new Map<string, TrainingComment[]>();
+
+    comments
+      .filter((comment) => comment.parentCommentId)
+      .forEach((comment) => {
+        const parentId = comment.parentCommentId || "";
+        const existing = map.get(parentId) || [];
+        map.set(parentId, [...existing, comment]);
+      });
+
+    return map;
+  }, [comments]);
 
   const nextLesson = useMemo(() => {
     if (!content) return null;
@@ -289,6 +469,19 @@ function LessonDetailContent() {
     fetchComments();
   }, [lessonId]);
 
+  const getCurrentUserName = () => {
+    return (
+      user?.displayName ||
+      profile?.name ||
+      user?.email ||
+      "Lumens user"
+    );
+  };
+
+  const getCurrentUserEmail = () => {
+    return user?.email || profile?.email || "";
+  };
+
   const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -316,12 +509,8 @@ function LessonDetailContent() {
         programId,
         lessonId,
         userId: user.uid,
-        userName:
-          user.displayName ||
-          profile?.name ||
-          user.email ||
-          "Lumens user",
-        userEmail: user.email || profile?.email || "",
+        userName: getCurrentUserName(),
+        userEmail: getCurrentUserEmail(),
         message,
       });
 
@@ -335,6 +524,51 @@ function LessonDetailContent() {
     }
   };
 
+  const handlePostReply = async (parentComment: TrainingComment) => {
+    if (!content || !user || userLoading) {
+      alert("Please sign in before posting a reply.");
+      return;
+    }
+
+    if (content.lesson.allowComments === false) {
+      alert("Comments are disabled for this lesson.");
+      return;
+    }
+
+    const message = (replyMessages[parentComment.id] || "").trim();
+
+    if (!message) {
+      alert("Please enter a reply.");
+      return;
+    }
+
+    setPostingReplyCommentId(parentComment.id);
+
+    try {
+      await createLessonComment({
+        programId,
+        lessonId,
+        parentCommentId: parentComment.id,
+        userId: user.uid,
+        userName: getCurrentUserName(),
+        userEmail: getCurrentUserEmail(),
+        message,
+      });
+
+      setReplyMessages((prev) => ({
+        ...prev,
+        [parentComment.id]: "",
+      }));
+      setReplyingToCommentId(null);
+      await fetchComments();
+    } catch (error) {
+      console.error("Failed to post reply:", error);
+      alert("Failed to post reply.");
+    } finally {
+      setPostingReplyCommentId(null);
+    }
+  };
+
   const handleDeleteComment = async (comment: TrainingComment) => {
     const canDelete = isAdmin || comment.userId === user?.uid;
 
@@ -343,7 +577,11 @@ function LessonDetailContent() {
       return;
     }
 
-    const confirmed = window.confirm("Delete this comment?");
+    const confirmed = window.confirm(
+      comment.parentCommentId
+        ? "Delete this reply?"
+        : "Delete this comment and its replies?"
+    );
 
     if (!confirmed) return;
 
@@ -584,50 +822,29 @@ function LessonDetailContent() {
           </div>
         ) : (
           <div className="space-y-3">
-            {comments.map((comment) => {
-              const canDelete = isAdmin || comment.userId === user?.uid;
-
-              return (
-                <div
-                  key={comment.id}
-                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
-                >
-                  <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="font-medium text-slate-900">
-                        {comment.userName || "Lumens user"}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {comment.userEmail}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-slate-500">
-                        {formatDateTime(comment.createdAt)}
-                      </span>
-
-                      {canDelete && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteComment(comment)}
-                          disabled={deletingCommentId === comment.id}
-                          className="text-xs text-red-600 hover:underline disabled:text-slate-400"
-                        >
-                          {deletingCommentId === comment.id
-                            ? "Deleting..."
-                            : "Delete"}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                    {comment.message}
-                  </p>
-                </div>
-              );
-            })}
+            {mainComments.map((comment) => (
+              <CommentCard
+                key={comment.id}
+                comment={comment}
+                replies={repliesByParent.get(comment.id) || []}
+                canDelete={isAdmin || comment.userId === user?.uid}
+                commentsEnabled={commentsEnabled}
+                isReplying={replyingToCommentId === comment.id}
+                replyMessage={replyMessages[comment.id] || ""}
+                postingReply={postingReplyCommentId === comment.id}
+                deletingCommentId={deletingCommentId}
+                onDelete={handleDeleteComment}
+                onStartReply={(commentId) => setReplyingToCommentId(commentId)}
+                onCancelReply={() => setReplyingToCommentId(null)}
+                onReplyMessageChange={(commentId, value) =>
+                  setReplyMessages((prev) => ({
+                    ...prev,
+                    [commentId]: value,
+                  }))
+                }
+                onSubmitReply={handlePostReply}
+              />
+            ))}
           </div>
         )}
       </div>

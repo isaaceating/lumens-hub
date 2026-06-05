@@ -6,6 +6,8 @@ import {
   getDocs,
   orderBy,
   query,
+  where,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -13,6 +15,7 @@ export type TrainingComment = {
   id: string;
   programId: string;
   lessonId: string;
+  parentCommentId?: string;
   userId: string;
   userName: string;
   userEmail: string;
@@ -60,5 +63,27 @@ export const deleteLessonComment = async (
   lessonId: string,
   commentId: string
 ) => {
-  await deleteDoc(doc(db, "trainingLessons", lessonId, "comments", commentId));
+  const commentsRef = collection(
+    db,
+    "trainingLessons",
+    lessonId,
+    "comments"
+  );
+
+  const repliesQuery = query(
+    commentsRef,
+    where("parentCommentId", "==", commentId)
+  );
+
+  const repliesSnapshot = await getDocs(repliesQuery);
+
+  const batch = writeBatch(db);
+
+  repliesSnapshot.docs.forEach((replyDoc) => {
+    batch.delete(replyDoc.ref);
+  });
+
+  batch.delete(doc(db, "trainingLessons", lessonId, "comments", commentId));
+
+  await batch.commit();
 };
