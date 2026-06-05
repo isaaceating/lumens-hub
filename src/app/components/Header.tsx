@@ -12,25 +12,10 @@ const buildStaticBreadcrumbs = (pathname: string) => {
     return [{ label: "Home", href: "/dashboard" }];
   }
 
-  if (pathname === "/training") {
+  if (pathname.startsWith("/training/")) {
     return [
       { label: "Home", href: "/dashboard" },
-      { label: "Training", href: "/training" },
-    ];
-  }
-
-  if (pathname.startsWith("/training/level-1")) {
-    return [
-      { label: "Home", href: "/dashboard" },
-      { label: "Training", href: "/training" },
-      { label: "Level 1 Training", href: "/training/level-1" },
-    ];
-  }
-
-  if (pathname.startsWith("/training")) {
-    return [
-      { label: "Home", href: "/dashboard" },
-      { label: "Training", href: "/training" },
+      { label: "Training", href: pathname },
     ];
   }
 
@@ -39,6 +24,14 @@ const buildStaticBreadcrumbs = (pathname: string) => {
       { label: "Home", href: "/dashboard" },
       { label: "Admin", href: "/admin" },
       { label: "Admin Dashboard", href: "/admin" },
+    ];
+  }
+
+  if (pathname.startsWith("/admin/training")) {
+    return [
+      { label: "Home", href: "/dashboard" },
+      { label: "Admin", href: "/admin" },
+      { label: "Training Management", href: "/admin/training" },
     ];
   }
 
@@ -55,14 +48,6 @@ const buildStaticBreadcrumbs = (pathname: string) => {
       { label: "Home", href: "/dashboard" },
       { label: "Admin", href: "/admin" },
       { label: "Module Management", href: "/admin/modules" },
-    ];
-  }
-
-  if (pathname.startsWith("/admin/courses")) {
-    return [
-      { label: "Home", href: "/dashboard" },
-      { label: "Admin", href: "/admin" },
-      { label: "Course Management", href: "/admin/courses" },
     ];
   }
 

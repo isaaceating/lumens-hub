@@ -14,6 +14,29 @@ const getModuleHref = (module: any) => {
   return module.href || "#";
 };
 
+const adminNavItems = [
+  {
+    id: "admin-home",
+    name: "Admin Home",
+    href: "/admin",
+  },
+  {
+    id: "admin-training",
+    name: "Training",
+    href: "/admin/training",
+  },
+  {
+    id: "admin-modules",
+    name: "Modules",
+    href: "/admin/modules",
+  },
+  {
+    id: "admin-users",
+    name: "Users",
+    href: "/admin/users",
+  },
+];
+
 export default function Sidebar() {
   const pathname = usePathname();
   const { profile, loading } = useUserProfile();
@@ -72,7 +95,7 @@ export default function Sidebar() {
         if (module.enabled === false) return false;
 
         if (module.type === "admin") {
-          return isAdmin && enabledModules.includes(module.id);
+          return false;
         }
 
         return enabledModules.includes(module.id);
@@ -90,12 +113,10 @@ export default function Sidebar() {
     (module) => module.section !== "workspace"
   );
 
-  const adminModules = visibleModules.filter(
-    (module) => module.type === "admin"
-  );
-
   useEffect(() => {
-    if (!pathname.startsWith("/modules")) return;
+    if (!pathname.startsWith("/modules") && !pathname.startsWith("/training")) {
+      return;
+    }
 
     const activeModule = featureModules.find((module) => {
       const href = getModuleHref(module);
@@ -285,6 +306,27 @@ export default function Sidebar() {
     );
   };
 
+  const renderAdminItem = (item: { id: string; name: string; href: string }) => {
+    const isActive =
+      item.href === "/admin"
+        ? pathname === "/admin"
+        : pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+    const className = collapsed
+      ? `mb-1 flex items-center justify-center rounded-lg px-2 py-2 text-sm transition ${
+          isActive ? activeItemClass : inactiveItemClass
+        }`
+      : `mb-1 block truncate rounded-lg px-4 py-2 pl-8 text-sm transition ${
+          isActive ? activeItemClass : inactiveItemClass
+        }`;
+
+    return (
+      <Link key={item.id} href={item.href} title={item.name} className={className}>
+        {collapsed ? "•" : item.name}
+      </Link>
+    );
+  };
+
   return (
     <aside
       className={`flex min-h-screen flex-col bg-slate-950 text-white transition-all duration-200 ${
@@ -371,7 +413,7 @@ export default function Sidebar() {
 
           {renderBookmarkItem()}
 
-          {adminModules.length > 0 && (
+          {isAdmin && (
             <div>
               {renderExpandableItem("Admin", "⚙", adminOpen, () =>
                 setAdminOpen((prev) => !prev)
@@ -379,12 +421,7 @@ export default function Sidebar() {
 
               {!collapsed && adminOpen && (
                 <div className="mt-1">
-                  {adminModules.map((module) =>
-                    renderModuleItem(module, {
-                      compact: true,
-                      exact: module.href === "/admin",
-                    })
-                  )}
+                  {adminNavItems.map((item) => renderAdminItem(item))}
                 </div>
               )}
             </div>

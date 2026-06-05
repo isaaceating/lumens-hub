@@ -1377,7 +1377,7 @@ function EditTrainingProgramContent() {
           onClick={() => router.push("/admin/training")}
           className="mb-4 text-sm text-blue-700 hover:underline"
         >
-          ??Back to Training Management
+          Back to Training Management
         </button>
 
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">
@@ -1395,15 +1395,12 @@ function EditTrainingProgramContent() {
           onClick={() => router.push("/admin/training")}
           className="mb-4 text-sm text-blue-700 hover:underline"
         >
-          ??Back to Training Management
+          Back to Training Management
         </button>
 
         <h1 className="text-2xl font-bold text-slate-900">
           Edit Training Program
         </h1>
-        <p className="mt-2 text-slate-600">
-          Manage program settings, levels, courses, and lessons.
-        </p>
       </div>
 
       <div className="space-y-8">
@@ -1416,7 +1413,7 @@ function EditTrainingProgramContent() {
               Program Settings
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              Program ID: {programId} 繚 Frontend route: /training/{programId}
+              Program ID: {programId} | Frontend route: /training/{programId}
             </p>
           </div>
 
