@@ -180,6 +180,8 @@ function CommentCard({
   replies,
   canDelete,
   commentsEnabled,
+  currentUserId,
+  isAdmin,
   isReplying,
   replyMessage,
   postingReply,
@@ -194,6 +196,8 @@ function CommentCard({
   replies: TrainingComment[];
   canDelete: boolean;
   commentsEnabled: boolean;
+  currentUserId?: string;
+  isAdmin: boolean;
   isReplying: boolean;
   replyMessage: string;
   postingReply: boolean;
@@ -236,7 +240,7 @@ function CommentCard({
         {comment.message}
       </p>
 
-      {commentsEnabled && (
+      {commentsEnabled && currentUserId && (
         <button
           type="button"
           onClick={() => onStartReply(comment.id)}
@@ -304,7 +308,7 @@ function CommentCard({
                     {formatDateTime(reply.createdAt)}
                   </span>
 
-                  {(canDelete || reply.userId === comment.userId) && (
+                  {(isAdmin || reply.userId === currentUserId) && (
                     <button
                       type="button"
                       onClick={() => onDelete(reply)}
@@ -358,6 +362,10 @@ function LessonDetailContent() {
 
   const mainComments = useMemo(() => {
     return comments.filter((comment) => !comment.parentCommentId);
+  }, [comments]);
+
+  const replyCount = useMemo(() => {
+    return comments.filter((comment) => comment.parentCommentId).length;
   }, [comments]);
 
   const repliesByParent = useMemo(() => {
@@ -470,12 +478,7 @@ function LessonDetailContent() {
   }, [lessonId]);
 
   const getCurrentUserName = () => {
-    return (
-      user?.displayName ||
-      profile?.name ||
-      user?.email ||
-      "Lumens user"
-    );
+    return user?.displayName || profile?.name || user?.email || "Lumens user";
   };
 
   const getCurrentUserEmail = () => {
@@ -777,7 +780,7 @@ function LessonDetailContent() {
           </div>
 
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500">
-            {comments.length} comments
+            {mainComments.length} comments / {replyCount} replies
           </span>
         </div>
 
@@ -799,7 +802,7 @@ function LessonDetailContent() {
 
               <button
                 type="submit"
-                disabled={postingComment || userLoading}
+                disabled={postingComment || userLoading || !user}
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-slate-400"
               >
                 {postingComment ? "Posting..." : "Post Comment"}
@@ -829,6 +832,8 @@ function LessonDetailContent() {
                 replies={repliesByParent.get(comment.id) || []}
                 canDelete={isAdmin || comment.userId === user?.uid}
                 commentsEnabled={commentsEnabled}
+                currentUserId={user?.uid}
+                isAdmin={isAdmin}
                 isReplying={replyingToCommentId === comment.id}
                 replyMessage={replyMessages[comment.id] || ""}
                 postingReply={postingReplyCommentId === comment.id}
