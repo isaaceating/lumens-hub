@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   getPublishedTrainingCoursesByProgram,
@@ -235,8 +236,8 @@ function TrainingProgramContent() {
                                   key={lesson.id}
                                   className="rounded-xl bg-white p-5 shadow-sm"
                                 >
-                                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                                    <div>
+                                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                                    <div className="min-w-0">
                                       <div className="mb-2 flex flex-wrap items-center gap-2">
                                         <span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
                                           Lesson {lesson.order || 0}
@@ -247,6 +248,13 @@ function TrainingProgramContent() {
                                             {lesson.duration}
                                           </span>
                                         )}
+
+                                        {lesson.materials &&
+                                          lesson.materials.length > 0 && (
+                                            <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">
+                                              {lesson.materials.length} materials
+                                            </span>
+                                          )}
                                       </div>
 
                                       <h4 className="text-base font-semibold text-slate-900">
@@ -258,55 +266,36 @@ function TrainingProgramContent() {
                                           {lesson.description}
                                         </p>
                                       )}
-                                    </div>
-                                  </div>
 
-                                  {lesson.videoUrl && (
-                                    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                                      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                                        Video
-                                      </div>
-
-                                      <a
-                                        href={lesson.videoUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="break-all text-sm font-medium text-blue-700 hover:underline"
-                                      >
-                                        {lesson.videoUrl}
-                                      </a>
-                                    </div>
-                                  )}
-
-                                  {lesson.materials &&
-                                    lesson.materials.length > 0 && (
-                                      <div className="mt-4">
-                                        <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                                          Materials
-                                        </div>
-
-                                        <div className="flex flex-wrap gap-2">
-                                          {lesson.materials.map(
-                                            (material, index) => (
-                                              <a
-                                                key={`${lesson.id}-${index}`}
-                                                href={material.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                                              >
-                                                <span>
-                                                  {getMaterialIcon(
-                                                    material.type
-                                                  )}
+                                      {lesson.materials &&
+                                        lesson.materials.length > 0 && (
+                                          <div className="mt-3 flex flex-wrap gap-2">
+                                            {lesson.materials
+                                              .slice(0, 3)
+                                              .map((material, index) => (
+                                                <span
+                                                  key={`${lesson.id}-${index}`}
+                                                  className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-xs text-slate-600"
+                                                >
+                                                  <span>
+                                                    {getMaterialIcon(
+                                                      material.type
+                                                    )}
+                                                  </span>
+                                                  <span>{material.title}</span>
                                                 </span>
-                                                <span>{material.title}</span>
-                                              </a>
-                                            )
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
+                                              ))}
+                                          </div>
+                                        )}
+                                    </div>
+
+                                    <Link
+                                      href={`/training/${programId}/lessons/${lesson.id}`}
+                                      className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-center text-sm font-medium text-white hover:bg-blue-700"
+                                    >
+                                      Start Lesson
+                                    </Link>
+                                  </div>
                                 </article>
                               ))}
                             </div>
