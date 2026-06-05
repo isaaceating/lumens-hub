@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useUserProfile } from "@/lib/useUserProfile";
 import {
   getPublishedTrainingCoursesByProgram,
   getPublishedTrainingLessonsByProgram,
@@ -13,6 +14,12 @@ import {
   TrainingLevel,
   TrainingProgram,
 } from "@/lib/training";
+import {
+  createLessonComment,
+  deleteLessonComment,
+  getLessonComments,
+  TrainingComment,
+} from "@/lib/trainingComments";
 
 type LessonContent = {
   program: TrainingProgram;
@@ -73,6 +80,16 @@ const getVimeoEmbedUrl = (url: string) => {
     return "";
   } catch {
     return "";
+  }
+};
+
+const formatDateTime = (value?: string) => {
+  if (!value) return "";
+
+  try {
+    return new Date(value).toLocaleString();
+  } catch {
+    return value;
   }
 };
 
@@ -162,10 +179,20 @@ function LessonDetailContent() {
   const params = useParams();
   const programId = params.programId as string;
   const lessonId = params.lessonId as string;
+  const { user, profile, loading: userLoading } = useUserProfile();
 
   const [content, setContent] = useState<LessonContent | null>(null);
+  const [comments, setComments] = useState<TrainingComment[]>([]);
+  const [commentMessage, setCommentMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [commentsLoading, setCommentsLoading] = useState(true);
+  const [postingComment, setPostingComment] = useState(false);
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(
+    null
+  );
   const [notFound, setNotFound] = useState(false);
+
+  const isAdmin = profile?.role === "admin";
 
   const nextLesson = useMemo(() => {
     if (!content) return null;
@@ -190,6 +217,21 @@ function LessonDetailContent() {
 
     return content.lessons[currentIndex - 1] || null;
   }, [content]);
+
+  const fetchComments = async () => {
+    if (!lessonId) return;
+
+    setCommentsLoading(true);
+
+    try {
+      const data = await getLessonComments(lessonId);
+      setComments(data);
+    } catch (error) {
+      console.error("Failed to load comments:", error);
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchLesson = async () => {
@@ -243,6 +285,81 @@ function LessonDetailContent() {
     fetchLesson();
   }, [programId, lessonId]);
 
+  useEffect(() => {
+    fetchComments();
+  }, [lessonId]);
+
+  const handlePostComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!content || !user || userLoading) {
+      alert("Please sign in before posting a comment.");
+      return;
+    }
+
+    if (content.lesson.allowComments === false) {
+      alert("Comments are disabled for this lesson.");
+      return;
+    }
+
+    const message = commentMessage.trim();
+
+    if (!message) {
+      alert("Please enter a comment.");
+      return;
+    }
+
+    setPostingComment(true);
+
+    try {
+      await createLessonComment({
+        programId,
+        lessonId,
+        userId: user.uid,
+        userName:
+          user.displayName ||
+          profile?.name ||
+          user.email ||
+          "Lumens user",
+        userEmail: user.email || profile?.email || "",
+        message,
+      });
+
+      setCommentMessage("");
+      await fetchComments();
+    } catch (error) {
+      console.error("Failed to post comment:", error);
+      alert("Failed to post comment.");
+    } finally {
+      setPostingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (comment: TrainingComment) => {
+    const canDelete = isAdmin || comment.userId === user?.uid;
+
+    if (!canDelete) {
+      alert("You can only delete your own comments.");
+      return;
+    }
+
+    const confirmed = window.confirm("Delete this comment?");
+
+    if (!confirmed) return;
+
+    setDeletingCommentId(comment.id);
+
+    try {
+      await deleteLessonComment(lessonId, comment.id);
+      await fetchComments();
+    } catch (error) {
+      console.error("Failed to delete comment:", error);
+      alert("Failed to delete comment.");
+    } finally {
+      setDeletingCommentId(null);
+    }
+  };
+
   if (loading) {
     return <div className="text-slate-500">Loading lesson...</div>;
   }
@@ -268,37 +385,38 @@ function LessonDetailContent() {
   }
 
   const { program, lesson, course, level } = content;
+  const commentsEnabled = lesson.allowComments !== false;
 
-      return (
-        <div className="-mt-4">
-          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-            <Link
-              href={`/training/${programId}`}
-              className="font-medium text-blue-700 hover:underline"
-            >
-              Back to {program.title}
-            </Link>
+  return (
+    <div className="-mt-4">
+      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+        <Link
+          href={`/training/${programId}`}
+          className="font-medium text-blue-700 hover:underline"
+        >
+          Back to {program.title}
+        </Link>
 
-            <span className="text-slate-300">/</span>
+        <span className="text-slate-300">/</span>
 
-            <div className="flex flex-wrap items-center gap-2 text-slate-500">
-              {level && <span>{level.title}</span>}
-              {level && course && <span>/</span>}
-              {course && <span>{course.title}</span>}
-              {(level || course) && <span>/</span>}
-              <span className="font-medium text-slate-700">
-                Lesson {lesson.order || 0}
-              </span>
-              {lesson.duration && (
-                <>
-                  <span>/</span>
-                  <span>{lesson.duration}</span>
-                </>
-              )}
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center gap-2 text-slate-500">
+          {level && <span>{level.title}</span>}
+          {level && course && <span>/</span>}
+          {course && <span>{course.title}</span>}
+          {(level || course) && <span>/</span>}
+          <span className="font-medium text-slate-700">
+            Lesson {lesson.order || 0}
+          </span>
+          {lesson.duration && (
+            <>
+              <span>/</span>
+              <span>{lesson.duration}</span>
+            </>
+          )}
+        </div>
+      </div>
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0">
           <VideoBlock lesson={lesson} />
         </div>
@@ -408,16 +526,109 @@ function LessonDetailContent() {
         )}
       </div>
 
-      <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Discussion</h2>
-        <p className="mt-2 text-sm text-slate-500">
-          Comments and questions will be available in the next version.
-        </p>
+      <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Discussion
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Ask questions or share notes with everyone who can access this
+              lesson.
+            </p>
+          </div>
 
-        {lesson.allowComments === false && (
-          <p className="mt-3 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-500">
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500">
+            {comments.length} comments
+          </span>
+        </div>
+
+        {commentsEnabled ? (
+          <form onSubmit={handlePostComment} className="mb-5">
+            <textarea
+              value={commentMessage}
+              onChange={(e) => setCommentMessage(e.target.value)}
+              rows={3}
+              placeholder="Write a comment or question..."
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+            />
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs text-slate-500">
+                Your comment will be visible to everyone who can access this
+                lesson.
+              </p>
+
+              <button
+                type="submit"
+                disabled={postingComment || userLoading}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-slate-400"
+              >
+                {postingComment ? "Posting..." : "Post Comment"}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="mb-5 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
             Comments are disabled for this lesson.
-          </p>
+          </div>
+        )}
+
+        {commentsLoading ? (
+          <div className="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500">
+            Loading comments...
+          </div>
+        ) : comments.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500">
+            No comments yet. Be the first to start the discussion.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {comments.map((comment) => {
+              const canDelete = isAdmin || comment.userId === user?.uid;
+
+              return (
+                <div
+                  key={comment.id}
+                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="font-medium text-slate-900">
+                        {comment.userName || "Lumens user"}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {comment.userEmail}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-slate-500">
+                        {formatDateTime(comment.createdAt)}
+                      </span>
+
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteComment(comment)}
+                          disabled={deletingCommentId === comment.id}
+                          className="text-xs text-red-600 hover:underline disabled:text-slate-400"
+                        >
+                          {deletingCommentId === comment.id
+                            ? "Deleting..."
+                            : "Delete"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                    {comment.message}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
