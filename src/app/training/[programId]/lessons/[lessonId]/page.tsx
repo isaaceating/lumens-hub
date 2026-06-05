@@ -18,6 +18,7 @@ import {
   createLessonComment,
   deleteLessonComment,
   getLessonComments,
+  setLessonCommentPinned,
   TrainingComment,
 } from "@/lib/trainingComments";
 
@@ -186,7 +187,9 @@ function CommentCard({
   replyMessage,
   postingReply,
   deletingCommentId,
+  pinningCommentId,
   onDelete,
+  onPinToggle,
   onStartReply,
   onCancelReply,
   onReplyMessageChange,
@@ -202,26 +205,58 @@ function CommentCard({
   replyMessage: string;
   postingReply: boolean;
   deletingCommentId: string | null;
+  pinningCommentId: string | null;
   onDelete: (comment: TrainingComment) => void;
+  onPinToggle: (comment: TrainingComment) => void;
   onStartReply: (commentId: string) => void;
   onCancelReply: () => void;
   onReplyMessageChange: (commentId: string, value: string) => void;
   onSubmitReply: (comment: TrainingComment) => void;
 }) {
+  const isPinned = comment.isPinned === true;
+
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+    <div
+      className={`rounded-xl border p-4 ${
+        isPinned
+          ? "border-blue-200 bg-blue-50"
+          : "border-slate-200 bg-slate-50"
+      }`}
+    >
       <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="font-medium text-slate-900">
-            {comment.userName || "Lumens user"}
+          <div className="flex flex-wrap items-center gap-2">
+            {isPinned && (
+              <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-medium text-white">
+                📌 Pinned
+              </span>
+            )}
+
+            <div className="font-medium text-slate-900">
+              {comment.userName || "Lumens user"}
+            </div>
           </div>
-          <div className="text-xs text-slate-500">{comment.userEmail}</div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span className="text-xs text-slate-500">
             {formatDateTime(comment.createdAt)}
           </span>
+
+          {isAdmin && !comment.parentCommentId && (
+            <button
+              type="button"
+              onClick={() => onPinToggle(comment)}
+              disabled={pinningCommentId === comment.id}
+              className="text-xs text-blue-700 hover:underline disabled:text-slate-400"
+            >
+              {pinningCommentId === comment.id
+                ? "Saving..."
+                : isPinned
+                  ? "Unpin"
+                  : "Pin"}
+            </button>
+          )}
 
           {canDelete && (
             <button
@@ -298,9 +333,6 @@ function CommentCard({
                   <div className="font-medium text-slate-900">
                     {reply.userName || "Lumens user"}
                   </div>
-                  <div className="text-xs text-slate-500">
-                    {reply.userEmail}
-                  </div>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -356,12 +388,24 @@ function LessonDetailContent() {
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(
     null
   );
+  const [pinningCommentId, setPinningCommentId] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
 
   const isAdmin = profile?.role === "admin";
 
   const mainComments = useMemo(() => {
-    return comments.filter((comment) => !comment.parentCommentId);
+    const main = comments.filter((comment) => !comment.parentCommentId);
+
+    return [...main].sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+
+      if (a.isPinned && b.isPinned) {
+        return (b.pinnedAt || "").localeCompare(a.pinnedAt || "");
+      }
+
+      return (a.createdAt || "").localeCompare(b.createdAt || "");
+    });
   }, [comments]);
 
   const replyCount = useMemo(() => {
@@ -515,6 +559,7 @@ function LessonDetailContent() {
         userName: getCurrentUserName(),
         userEmail: getCurrentUserEmail(),
         message,
+        isPinned: false,
       });
 
       setCommentMessage("");
@@ -556,6 +601,7 @@ function LessonDetailContent() {
         userName: getCurrentUserName(),
         userEmail: getCurrentUserEmail(),
         message,
+        isPinned: false,
       });
 
       setReplyMessages((prev) => ({
@@ -569,6 +615,36 @@ function LessonDetailContent() {
       alert("Failed to post reply.");
     } finally {
       setPostingReplyCommentId(null);
+    }
+  };
+
+  const handleTogglePinComment = async (comment: TrainingComment) => {
+    if (!isAdmin || !user) {
+      alert("Only admins can pin comments.");
+      return;
+    }
+
+    if (comment.parentCommentId) {
+      alert("Only main comments can be pinned.");
+      return;
+    }
+
+    setPinningCommentId(comment.id);
+
+    try {
+      await setLessonCommentPinned(
+        lessonId,
+        comment.id,
+        comment.isPinned !== true,
+        user.uid
+      );
+
+      await fetchComments();
+    } catch (error) {
+      console.error("Failed to update pinned comment:", error);
+      alert("Failed to update pinned comment.");
+    } finally {
+      setPinningCommentId(null);
     }
   };
 
@@ -838,7 +914,9 @@ function LessonDetailContent() {
                 replyMessage={replyMessages[comment.id] || ""}
                 postingReply={postingReplyCommentId === comment.id}
                 deletingCommentId={deletingCommentId}
+                pinningCommentId={pinningCommentId}
                 onDelete={handleDeleteComment}
+                onPinToggle={handleTogglePinComment}
                 onStartReply={(commentId) => setReplyingToCommentId(commentId)}
                 onCancelReply={() => setReplyingToCommentId(null)}
                 onReplyMessageChange={(commentId, value) =>

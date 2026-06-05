@@ -6,6 +6,7 @@ import {
   getDocs,
   orderBy,
   query,
+  updateDoc,
   where,
   writeBatch,
 } from "firebase/firestore";
@@ -20,6 +21,9 @@ export type TrainingComment = {
   userName: string;
   userEmail: string;
   message: string;
+  isPinned?: boolean;
+  pinnedAt?: string;
+  pinnedBy?: string;
   createdAt: string;
   updatedAt?: string;
 };
@@ -56,6 +60,28 @@ export const createLessonComment = async (
   await addDoc(commentsRef, {
     ...comment,
     createdAt: now(),
+  });
+};
+
+export const setLessonCommentPinned = async (
+  lessonId: string,
+  commentId: string,
+  isPinned: boolean,
+  pinnedBy: string
+) => {
+  const commentRef = doc(
+    db,
+    "trainingLessons",
+    lessonId,
+    "comments",
+    commentId
+  );
+
+  await updateDoc(commentRef, {
+    isPinned,
+    pinnedAt: isPinned ? now() : "",
+    pinnedBy: isPinned ? pinnedBy : "",
+    updatedAt: now(),
   });
 };
 
