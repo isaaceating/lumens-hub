@@ -84,6 +84,32 @@ const getVimeoEmbedUrl = (url: string) => {
   }
 };
 
+const getGoogleDrivePreviewUrl = (url: string) => {
+  try {
+    const parsed = new URL(url);
+
+    if (!parsed.hostname.includes("drive.google.com")) {
+      return "";
+    }
+
+    const fileMatch = parsed.pathname.match(/\/file\/d\/([^/]+)/);
+
+    if (fileMatch?.[1]) {
+      return `https://drive.google.com/file/d/${fileMatch[1]}/preview`;
+    }
+
+    const id = parsed.searchParams.get("id");
+
+    if (id) {
+      return `https://drive.google.com/file/d/${id}/preview`;
+    }
+
+    return "";
+  } catch {
+    return "";
+  }
+};
+
 const formatDateTime = (value?: string) => {
   if (!value) return "";
 
@@ -150,6 +176,50 @@ function VideoBlock({ lesson }: { lesson: TrainingLesson }) {
         </div>
       );
     }
+  }
+
+  if (videoType === "google-drive") {
+    const embedUrl = getGoogleDrivePreviewUrl(lesson.videoUrl);
+
+    if (embedUrl) {
+      return (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-black shadow-sm">
+          <div className="aspect-video">
+            <iframe
+              src={embedUrl}
+              title={lesson.title}
+              className="h-full w-full"
+              allow="autoplay"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex aspect-video items-center justify-center rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+        <div>
+          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+            Google Drive Video
+          </div>
+
+          <a
+            href={lesson.videoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="break-all text-sm font-medium text-blue-700 hover:underline"
+          >
+            Open Google Drive video
+          </a>
+
+          <p className="mt-2 text-xs text-slate-500">
+            This Google Drive link could not be converted into an embedded
+            preview. Please check the file link format and sharing permission.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
