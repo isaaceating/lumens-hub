@@ -774,36 +774,45 @@ function LessonDetailContent() {
   const { program, lesson, course, level } = content;
   const commentsEnabled = lesson.allowComments !== false;
 
-  return (
-    <div className="-mt-4">
-      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-        <Link
-          href={`/training/${programId}`}
-          className="font-medium text-blue-700 hover:underline"
-        >
-          Back to {program.title}
-        </Link>
+return (
+  <div className="-mt-5">
+    <div className="mb-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+      <Link
+        href={`/training/${programId}`}
+        className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 font-medium text-blue-700 hover:bg-blue-100"
+      >
+        ← {program.title}
+      </Link>
 
-        <span className="text-slate-300">/</span>
+      <span className="text-slate-300">/</span>
 
-        <div className="flex flex-wrap items-center gap-2 text-slate-500">
-          {level && <span>{level.title}</span>}
-          {level && course && <span>/</span>}
-          {course && <span>{course.title}</span>}
-          {(level || course) && <span>/</span>}
-          <span className="font-medium text-slate-700">
-            Lesson {lesson.order || 0}
-          </span>
-          {lesson.duration && (
-            <>
-              <span>/</span>
-              <span>{lesson.duration}</span>
-            </>
-          )}
-        </div>
-      </div>
+      {level && (
+        <>
+          <span className="max-w-[180px] truncate">{level.title}</span>
+          <span className="text-slate-300">/</span>
+        </>
+      )}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_340px]">
+      {course && (
+        <>
+          <span className="max-w-[220px] truncate">{course.title}</span>
+          <span className="text-slate-300">/</span>
+        </>
+      )}
+
+      <span className="font-medium text-slate-700">
+        Lesson {lesson.order || 0}
+      </span>
+
+      {lesson.duration && (
+        <>
+          <span className="text-slate-300">/</span>
+          <span>{lesson.duration}</span>
+        </>
+      )}
+    </div>
+
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0">
           <VideoBlock lesson={lesson} />
         </div>
