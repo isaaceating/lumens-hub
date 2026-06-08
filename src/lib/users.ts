@@ -1,7 +1,6 @@
 import { collection, getDocs, doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
-
 export const updateUserModules = async (
   uid: string,
   enabledModules: string[]
@@ -19,8 +18,11 @@ export const getAllUsers = async () => {
 
   const users: any[] = [];
 
-  querySnapshot.forEach((doc) => {
-    users.push(doc.data());
+  querySnapshot.forEach((docSnap) => {
+    users.push({
+      uid: docSnap.id,
+      ...docSnap.data(),
+    });
   });
 
   return users;
@@ -34,7 +36,10 @@ export const getUserById = async (uid: string) => {
     return null;
   }
 
-  return userSnap.data();
+  return {
+    uid: userSnap.id,
+    ...userSnap.data(),
+  };
 };
 
 export const updateUserProfile = async (
@@ -43,6 +48,7 @@ export const updateUserProfile = async (
     role?: string;
     region?: string;
     enabledModules?: string[];
+    enabledDashboardSections?: string[];
   }
 ) => {
   const userRef = doc(db, "users", uid);
