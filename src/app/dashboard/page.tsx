@@ -843,21 +843,21 @@ export default function DashboardPage() {
                       key={`${news.id}-${index}`}
                       type="button"
                       onClick={() => setSelectedNews(news)}
-                      className="group relative min-h-[118px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
+                      className="group relative h-[150px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
                     >
                       <div className="absolute inset-0 bg-blue-900/0 transition group-hover:bg-blue-900/90" />
 
-                      <div className="relative transition group-hover:opacity-20">
-                        <div className="mb-2 flex items-center gap-2 text-xs text-slate-400">
-                          <span>◷</span>
+                      <div className="relative flex h-full flex-col transition group-hover:opacity-20">
+                        <div className="mb-3 flex h-4 items-center gap-2 text-xs text-slate-400">
+                          <span className="text-[11px]">◷</span>
                           <span>{formatNewsDate(news.publishedAt)}</span>
                         </div>
 
-                        <h3 className="line-clamp-2 text-base font-bold leading-6 text-slate-900">
+                        <h3 className="line-clamp-2 min-h-[48px] text-base font-bold leading-6 text-slate-900">
                           {news.title}
                         </h3>
 
-                        <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
+                        <p className="mt-2 line-clamp-2 min-h-[48px] text-sm leading-6 text-slate-500">
                           {news.summary}
                         </p>
                       </div>

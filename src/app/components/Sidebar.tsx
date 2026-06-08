@@ -26,6 +26,11 @@ const adminNavItems = [
     href: "/admin/training",
   },
   {
+    id: "admin-news",
+    name: "News",
+    href: "/admin/news",
+  },
+  {
     id: "admin-modules",
     name: "Modules",
     href: "/admin/modules",
