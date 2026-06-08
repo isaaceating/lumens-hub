@@ -16,13 +16,6 @@ export const modules: ModuleItem[] = [
     type: "core",
   },
   {
-  id: "training",
-  name: "Certification",
-  href: "/training",
-  type: "feature",
-  showOnDashboard: true,
-  },
-  {
     id: "admin",
     name: "Admin Home",
     href: "/admin",
@@ -39,11 +32,5 @@ export const modules: ModuleItem[] = [
     name: "Modules",
     href: "/admin/modules",
     type: "admin",
-  },
-  {
-  id: "courses",
-  name: "Courses",
-  href: "/admin/courses",
-  type: "admin",
   },
 ];
