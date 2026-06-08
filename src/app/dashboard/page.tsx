@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { Timestamp } from "firebase/firestore";
 import { signInWithGoogle } from "@/lib/auth";
 import { useUserProfile } from "@/lib/useUserProfile";
 import { getAllModules } from "@/lib/modules";
@@ -12,6 +13,7 @@ import {
   updateUserBookmark,
   updateUserBookmarkOrder,
 } from "@/lib/bookmarks";
+import { getPublishedNews, NewsItem } from "@/lib/news";
 
 type DashboardSectionKey =
   | "news"
@@ -20,60 +22,34 @@ type DashboardSectionKey =
   | "resources"
   | "bookmarks";
 
-type NewsItem = {
-  id: string;
-  title: string;
-  date: string;
-  summary: string;
-  content: string;
-  audience: string;
-};
-
-const mockNews: NewsItem[] = [
-  {
-    id: "news-1",
-    title: "PDM Training content has been updated",
-    date: "2026/06/05",
-    summary: "New lesson resources and discussion features are now available.",
-    content:
-      "PDM Training now includes lesson resources, embedded video support, shared discussion, replies, and pinned comments. Please check the latest training content and leave questions in the discussion area.",
-    audience: "Internal",
-  },
-  {
-    id: "news-2",
-    title: "Lesson discussion is now available",
-    date: "2026/06/04",
-    summary: "Users can now ask questions and reply under each lesson.",
-    content:
-      "The Training module now supports shared discussion for each lesson. All users with access to a lesson can view and participate in the discussion.",
-    audience: "Internal",
-  },
-  {
-    id: "news-3",
-    title: "Google Drive video preview supported",
-    date: "2026/06/03",
-    summary: "Training lessons can now preview Google Drive MP4 videos.",
-    content:
-      "Admins can set lesson video type to google-drive and paste a Google Drive MP4 file link. The lesson player will automatically use Google Drive preview mode.",
-    audience: "Internal",
-  },
-  {
-    id: "news-4",
-    title: "Lumens Portal dashboard redesign started",
-    date: "2026/06/02",
-    summary: "The homepage is being redesigned for better user experience.",
-    content:
-      "The new dashboard will include quick access, latest news, training activity, workspaces, official resources, and personal bookmarks.",
-    audience: "Internal",
-  },
-];
-
 const getModuleHref = (module: any) => {
   if (module.moduleKind === "embedded") {
     return `/modules/${module.id}`;
   }
 
   return module.href || "#";
+};
+
+const formatNewsDate = (value?: Timestamp | string | Date | null) => {
+  if (!value) return "";
+
+  try {
+    if (value instanceof Timestamp) {
+      return value.toDate().toLocaleDateString();
+    }
+
+    if (typeof value === "object" && "toDate" in value) {
+      return (value as any).toDate().toLocaleDateString();
+    }
+
+    if (typeof value === "object" && "seconds" in value) {
+      return new Date((value as any).seconds * 1000).toLocaleDateString();
+    }
+
+    return new Date(value).toLocaleDateString();
+  } catch {
+    return "";
+  }
 };
 
 const WorkspaceIcon = () => (
@@ -137,6 +113,8 @@ export default function DashboardPage() {
 
   const [modules, setModules] = useState<any[]>([]);
   const [bookmarks, setBookmarks] = useState<any[]>([]);
+  const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
+  const [loadingNews, setLoadingNews] = useState(true);
 
   const [showBookmarkForm, setShowBookmarkForm] = useState(false);
   const [bookmarkName, setBookmarkName] = useState("");
@@ -204,6 +182,28 @@ export default function DashboardPage() {
   }, [loading, user, profile]);
 
   useEffect(() => {
+    const fetchNews = async () => {
+      if (!user) return;
+
+      setLoadingNews(true);
+
+      try {
+        const data = await getPublishedNews();
+        setNewsItems(data);
+        setActiveNewsIndex(0);
+      } catch (error) {
+        console.error("Failed to load news:", error);
+      } finally {
+        setLoadingNews(false);
+      }
+    };
+
+    if (!loading && user) {
+      fetchNews();
+    }
+  }, [loading, user]);
+
+  useEffect(() => {
     if (!loading && user?.uid) {
       fetchBookmarks();
     }
@@ -249,16 +249,16 @@ export default function DashboardPage() {
   );
 
   const visibleNewsItems = useMemo(() => {
-    if (mockNews.length <= 3) {
-      return mockNews;
+    if (newsItems.length <= 3) {
+      return newsItems;
     }
 
     return [
-      mockNews[activeNewsIndex],
-      mockNews[(activeNewsIndex + 1) % mockNews.length],
-      mockNews[(activeNewsIndex + 2) % mockNews.length],
-    ];
-  }, [activeNewsIndex]);
+      newsItems[activeNewsIndex],
+      newsItems[(activeNewsIndex + 1) % newsItems.length],
+      newsItems[(activeNewsIndex + 2) % newsItems.length],
+    ].filter(Boolean);
+  }, [activeNewsIndex, newsItems]);
 
   const quickAccessItems = [
     {
@@ -465,13 +465,17 @@ export default function DashboardPage() {
   };
 
   const goToPreviousNews = () => {
+    if (newsItems.length === 0) return;
+
     setActiveNewsIndex((prev) =>
-      prev === 0 ? mockNews.length - 1 : prev - 1
+      prev === 0 ? newsItems.length - 1 : prev - 1
     );
   };
 
   const goToNextNews = () => {
-    setActiveNewsIndex((prev) => (prev + 1) % mockNews.length);
+    if (newsItems.length === 0) return;
+
+    setActiveNewsIndex((prev) => (prev + 1) % newsItems.length);
   };
 
   const renderModuleCard = (module: any, section: "workspace" | "resource") => {
@@ -813,76 +817,88 @@ export default function DashboardPage() {
         <section className="mb-10">
           <SectionTitle title="Latest News" />
 
-          <div className="mx-auto flex max-w-6xl items-center gap-4">
-            <button
-              type="button"
-              onClick={goToPreviousNews}
-              className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-xl text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-blue-50 hover:text-blue-700 md:flex"
-              aria-label="Previous news"
-            >
-              ‹
-            </button>
-
-            <div className="grid flex-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {visibleNewsItems.map((news, index) => (
-                <button
-                  key={`${news.id}-${index}`}
-                  type="button"
-                  onClick={() => setSelectedNews(news)}
-                  className="group relative min-h-[118px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
-                >
-                  <div className="absolute inset-0 bg-blue-900/0 transition group-hover:bg-blue-900/90" />
-
-                  <div className="relative transition group-hover:opacity-20">
-                    <div className="mb-2 flex items-center gap-2 text-xs text-slate-400">
-                      <span>◷</span>
-                      <span>{news.date}</span>
-                    </div>
-
-                    <h3 className="line-clamp-2 text-base font-bold leading-6 text-slate-900">
-                      {news.title}
-                    </h3>
-
-                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
-                      {news.summary}
-                    </p>
-                  </div>
-
-                  <div className="absolute inset-0 hidden items-center justify-center text-white group-hover:flex">
-                    <div className="flex items-center gap-2 text-base font-semibold">
-                      <span>◎</span>
-                      <span>View Details</span>
-                    </div>
-                  </div>
-                </button>
-              ))}
+          {loadingNews ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+              Loading news...
             </div>
+          ) : newsItems.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+              No published news yet.
+            </div>
+          ) : (
+            <>
+              <div className="mx-auto flex max-w-6xl items-center gap-4">
+                <button
+                  type="button"
+                  onClick={goToPreviousNews}
+                  className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-xl text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-blue-50 hover:text-blue-700 md:flex"
+                  aria-label="Previous news"
+                >
+                  ‹
+                </button>
 
-            <button
-              type="button"
-              onClick={goToNextNews}
-              className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-xl text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-blue-50 hover:text-blue-700 md:flex"
-              aria-label="Next news"
-            >
-              ›
-            </button>
-          </div>
+                <div className="grid flex-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {visibleNewsItems.map((news, index) => (
+                    <button
+                      key={`${news.id}-${index}`}
+                      type="button"
+                      onClick={() => setSelectedNews(news)}
+                      className="group relative min-h-[118px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
+                    >
+                      <div className="absolute inset-0 bg-blue-900/0 transition group-hover:bg-blue-900/90" />
 
-          <div className="mt-5 flex items-center justify-center gap-2">
-            {mockNews.map((news, index) => (
-              <button
-                key={news.id}
-                type="button"
-                onClick={() => setActiveNewsIndex(index)}
-                className={`h-2.5 rounded-full transition ${
-                  activeNewsIndex === index
-                    ? "w-8 bg-blue-700"
-                    : "w-2.5 bg-slate-300 hover:bg-slate-400"
-                }`}
-                aria-label={`Go to news ${index + 1}`}
-              />
-            ))}
-          </div>
+                      <div className="relative transition group-hover:opacity-20">
+                        <div className="mb-2 flex items-center gap-2 text-xs text-slate-400">
+                          <span>◷</span>
+                          <span>{formatNewsDate(news.publishedAt)}</span>
+                        </div>
+
+                        <h3 className="line-clamp-2 text-base font-bold leading-6 text-slate-900">
+                          {news.title}
+                        </h3>
+
+                        <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
+                          {news.summary}
+                        </p>
+                      </div>
+
+                      <div className="absolute inset-0 hidden items-center justify-center text-white group-hover:flex">
+                        <div className="flex items-center gap-2 text-base font-semibold">
+                          <span>◎</span>
+                          <span>View Details</span>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={goToNextNews}
+                  className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-xl text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-blue-50 hover:text-blue-700 md:flex"
+                  aria-label="Next news"
+                >
+                  ›
+                </button>
+              </div>
+
+              <div className="mt-5 flex items-center justify-center gap-2">
+                {newsItems.map((news, index) => (
+                  <button
+                    key={news.id}
+                    type="button"
+                    onClick={() => setActiveNewsIndex(index)}
+                    className={`h-2.5 rounded-full transition ${
+                      activeNewsIndex === index
+                        ? "w-8 bg-blue-700"
+                        : "w-2.5 bg-slate-300 hover:bg-slate-400"
+                    }`}
+                    aria-label={`Go to news ${index + 1}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </section>
       )}
 
@@ -997,12 +1013,14 @@ export default function DashboardPage() {
                   <div className="font-semibold text-slate-700">
                     Published
                   </div>
-                  <div className="text-slate-700">{selectedNews.date}</div>
+                  <div className="text-slate-700">
+                    {formatNewsDate(selectedNews.publishedAt)}
+                  </div>
 
                   <div className="font-semibold text-slate-700">Audience</div>
                   <div>
                     <span className="rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700">
-                      {selectedNews.audience}
+                      {selectedNews.audience || "Internal"}
                     </span>
                   </div>
                 </div>
