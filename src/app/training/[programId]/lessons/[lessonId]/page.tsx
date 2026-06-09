@@ -13,6 +13,7 @@ import {
   TrainingLesson,
   TrainingLevel,
   TrainingProgram,
+  TrainingQuizQuestion,
 } from "@/lib/training";
 import {
   createLessonComment,
@@ -32,6 +33,12 @@ type LessonContent = {
   level?: TrainingLevel;
 };
 
+type QuizResult = {
+  score: number;
+  passed: boolean;
+  submittedAt: string;
+};
+
 const getMaterialIcon = (type?: string) => {
   switch (type) {
     case "slides":
@@ -48,6 +55,12 @@ const getMaterialIcon = (type?: string) => {
       return "🔗";
   }
 };
+
+const getCompletionStorageKey = (programId: string) =>
+  `lumens-training-completed-lessons:${programId}`;
+
+const getQuizResultStorageKey = (programId: string, lessonId: string) =>
+  `lumens-training-quiz-result:${programId}:${lessonId}`;
 
 const getYouTubeEmbedUrl = (url: string) => {
   try {
@@ -246,6 +259,249 @@ function VideoBlock({ lesson }: { lesson: TrainingLesson }) {
   );
 }
 
+function QuizBlock({
+  lesson,
+  quizResult,
+  onQuizPassed,
+  onQuizResultChange,
+}: {
+  lesson: TrainingLesson;
+  quizResult: QuizResult | null;
+  onQuizPassed: () => void;
+  onQuizResultChange: (result: QuizResult | null) => void;
+}) {
+  const questions = useMemo(() => {
+    return [...(lesson.quizQuestions || [])].sort((a, b) => {
+      const orderDiff = (a.order || 0) - (b.order || 0);
+
+      if (orderDiff !== 0) return orderDiff;
+
+      return (a.question || "").localeCompare(b.question || "");
+    });
+  }, [lesson.quizQuestions]);
+
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>(
+    {}
+  );
+  const [submittedAnswers, setSubmittedAnswers] = useState<
+    Record<number, number>
+  >({});
+
+  useEffect(() => {
+    setSelectedAnswers({});
+    setSubmittedAnswers({});
+  }, [lesson.id]);
+
+  if (!lesson.hasQuiz || questions.length === 0) {
+    return null;
+  }
+
+  const passScore = lesson.quizPassScore ?? 80;
+  const isPassed = quizResult?.passed === true;
+
+  const handleSubmitQuiz = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const unansweredQuestion = questions.findIndex(
+      (_, index) => selectedAnswers[index] === undefined
+    );
+
+    if (unansweredQuestion !== -1) {
+      alert(`Please answer question ${unansweredQuestion + 1}.`);
+      return;
+    }
+
+    const correctCount = questions.reduce((count, question, index) => {
+      return selectedAnswers[index] === question.correctAnswerIndex
+        ? count + 1
+        : count;
+    }, 0);
+
+    const score = Math.round((correctCount / questions.length) * 100);
+    const passed = score >= passScore;
+
+    const result: QuizResult = {
+      score,
+      passed,
+      submittedAt: new Date().toISOString(),
+    };
+
+    setSubmittedAnswers(selectedAnswers);
+    onQuizResultChange(result);
+
+    if (passed) {
+      onQuizPassed();
+    }
+  };
+
+  const handleTryAgain = () => {
+    setSelectedAnswers({});
+    setSubmittedAnswers({});
+    onQuizResultChange(null);
+  };
+
+  return (
+    <div className="mt-6 rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="mb-2 inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+            Knowledge Check
+          </div>
+
+          <h2 className="text-lg font-semibold text-slate-900">
+            Quiz for this lesson
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Answer the questions below to confirm your understanding. Passing
+            score: {passScore}%.
+          </p>
+        </div>
+
+        {quizResult && (
+          <div
+            className={`rounded-full px-3 py-1 text-xs font-medium ${
+              quizResult.passed
+                ? "bg-green-100 text-green-700"
+                : "bg-red-50 text-red-600"
+            }`}
+          >
+            Score: {quizResult.score}% ·{" "}
+            {quizResult.passed ? "Passed" : "Try again"}
+          </div>
+        )}
+      </div>
+
+      {isPassed ? (
+        <div className="rounded-xl border border-green-100 bg-green-50 p-4">
+          <h3 className="font-semibold text-green-800">Quiz passed</h3>
+          <p className="mt-1 text-sm text-green-700">
+            This lesson has been marked as completed.
+          </p>
+
+          <button
+            type="button"
+            onClick={handleTryAgain}
+            className="mt-3 rounded-lg bg-white px-4 py-2 text-sm text-green-700 ring-1 ring-green-200 hover:bg-green-100"
+          >
+            Retake Quiz
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmitQuiz} className="space-y-4">
+          {questions.map((question, questionIndex) => {
+            const submittedAnswer = submittedAnswers[questionIndex];
+            const hasSubmitted = submittedAnswer !== undefined;
+            const isCorrect = submittedAnswer === question.correctAnswerIndex;
+
+            return (
+              <div
+                key={`quiz-question-${questionIndex}`}
+                className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+              >
+                <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-blue-700">
+                      Question {questionIndex + 1}
+                    </div>
+
+                    <h3 className="font-semibold text-slate-900">
+                      {question.question}
+                    </h3>
+                  </div>
+
+                  {hasSubmitted && (
+                    <span
+                      className={`rounded-full px-2 py-1 text-xs ${
+                        isCorrect
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-50 text-red-600"
+                      }`}
+                    >
+                      {isCorrect ? "Correct" : "Incorrect"}
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  {(question.options || []).map((option, optionIndex) => {
+                    const selected = selectedAnswers[questionIndex] === optionIndex;
+                    const correct = question.correctAnswerIndex === optionIndex;
+
+                    return (
+                      <label
+                        key={`quiz-question-${questionIndex}-option-${optionIndex}`}
+                        className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-2 text-sm transition ${
+                          hasSubmitted && correct
+                            ? "border-green-200 bg-green-50 text-green-800"
+                            : selected
+                              ? "border-blue-200 bg-blue-50 text-blue-800"
+                              : "border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-blue-50"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name={`question-${questionIndex}`}
+                          checked={selected}
+                          onChange={() =>
+                            setSelectedAnswers((prev) => ({
+                              ...prev,
+                              [questionIndex]: optionIndex,
+                            }))
+                          }
+                          className="mt-1"
+                        />
+
+                        <span>{option}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {hasSubmitted && question.explanation && (
+                  <div className="mt-3 rounded-xl bg-white p-3 text-sm text-slate-600 ring-1 ring-slate-200">
+                    <span className="font-medium text-slate-900">
+                      Explanation:
+                    </span>{" "}
+                    {question.explanation}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-slate-500">
+              {lesson.quizRequired
+                ? "Passing this quiz is required to complete the lesson."
+                : "This quiz is optional, but passing it will mark the lesson as completed."}
+            </p>
+
+            <div className="flex gap-3">
+              {quizResult && !quizResult.passed && (
+                <button
+                  type="button"
+                  onClick={handleTryAgain}
+                  className="rounded-lg bg-slate-100 px-4 py-2 text-sm text-slate-700 hover:bg-slate-200"
+                >
+                  Reset
+                </button>
+              )}
+
+              <button
+                type="submit"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+              >
+                Submit Quiz
+              </button>
+            </div>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
 function CommentCard({
   comment,
   replies,
@@ -399,10 +655,8 @@ function CommentCard({
               className="rounded-xl border border-slate-200 bg-white p-3"
             >
               <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div className="font-medium text-slate-900">
-                    {reply.userName || "Lumens user"}
-                  </div>
+                <div className="font-medium text-slate-900">
+                  {reply.userName || "Lumens user"}
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -449,6 +703,8 @@ function LessonDetailContent() {
   const [replyMessages, setReplyMessages] = useState<Record<string, string>>(
     {}
   );
+  const [completedLessonIds, setCompletedLessonIds] = useState<string[]>([]);
+  const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [commentsLoading, setCommentsLoading] = useState(true);
   const [postingComment, setPostingComment] = useState(false);
@@ -520,6 +776,10 @@ function LessonDetailContent() {
     return content.lessons[currentIndex - 1] || null;
   }, [content]);
 
+  const isLessonCompleted = completedLessonIds.includes(lessonId);
+
+  const commentsEnabled = content?.lesson.allowComments !== false;
+
   const fetchComments = async () => {
     if (!lessonId) return;
 
@@ -533,6 +793,41 @@ function LessonDetailContent() {
     } finally {
       setCommentsLoading(false);
     }
+  };
+
+  const saveCompletedLessonIds = (nextIds: string[]) => {
+    setCompletedLessonIds(nextIds);
+
+    if (typeof window === "undefined") return;
+
+    window.localStorage.setItem(
+      getCompletionStorageKey(programId),
+      JSON.stringify(nextIds)
+    );
+  };
+
+  const markLessonComplete = () => {
+    if (!lessonId) return;
+
+    if (completedLessonIds.includes(lessonId)) return;
+
+    const nextIds = [...completedLessonIds, lessonId];
+    saveCompletedLessonIds(nextIds);
+  };
+
+  const handleQuizResultChange = (result: QuizResult | null) => {
+    setQuizResult(result);
+
+    if (typeof window === "undefined") return;
+
+    const key = getQuizResultStorageKey(programId, lessonId);
+
+    if (!result) {
+      window.localStorage.removeItem(key);
+      return;
+    }
+
+    window.localStorage.setItem(key, JSON.stringify(result));
   };
 
   useEffect(() => {
@@ -590,6 +885,34 @@ function LessonDetailContent() {
   useEffect(() => {
     fetchComments();
   }, [lessonId]);
+
+  useEffect(() => {
+    if (!programId || typeof window === "undefined") return;
+
+    try {
+      const stored = window.localStorage.getItem(getCompletionStorageKey(programId));
+      const parsed = stored ? JSON.parse(stored) : [];
+
+      setCompletedLessonIds(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      setCompletedLessonIds([]);
+    }
+  }, [programId, lessonId]);
+
+  useEffect(() => {
+    if (!programId || !lessonId || typeof window === "undefined") return;
+
+    try {
+      const stored = window.localStorage.getItem(
+        getQuizResultStorageKey(programId, lessonId)
+      );
+      const parsed = stored ? JSON.parse(stored) : null;
+
+      setQuizResult(parsed);
+    } catch {
+      setQuizResult(null);
+    }
+  }, [programId, lessonId]);
 
   const getCurrentUserName = () => {
     return user?.displayName || profile?.name || user?.email || "Lumens user";
@@ -772,47 +1095,56 @@ function LessonDetailContent() {
   }
 
   const { program, lesson, course, level } = content;
-  const commentsEnabled = lesson.allowComments !== false;
+  const hasQuiz = lesson.hasQuiz && (lesson.quizQuestions || []).length > 0;
+  const quizRequired = hasQuiz && lesson.quizRequired;
+  const canManuallyComplete = !quizRequired;
 
-return (
-  <div className="-mt-5">
-    <div className="mb-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
-      <Link
-        href={`/training/${programId}`}
-        className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 font-medium text-blue-700 hover:bg-blue-100"
-      >
-        ← {program.title}
-      </Link>
+  return (
+    <div className="-mt-5">
+      <div className="mb-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+        <Link
+          href={`/training/${programId}`}
+          className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 font-medium text-blue-700 hover:bg-blue-100"
+        >
+          ← {program.title}
+        </Link>
 
-      <span className="text-slate-300">/</span>
+        <span className="text-slate-300">/</span>
 
-      {level && (
-        <>
-          <span className="max-w-[180px] truncate">{level.title}</span>
-          <span className="text-slate-300">/</span>
-        </>
-      )}
+        {level && (
+          <>
+            <span className="max-w-[180px] truncate">{level.title}</span>
+            <span className="text-slate-300">/</span>
+          </>
+        )}
 
-      {course && (
-        <>
-          <span className="max-w-[220px] truncate">{course.title}</span>
-          <span className="text-slate-300">/</span>
-        </>
-      )}
+        {course && (
+          <>
+            <span className="max-w-[220px] truncate">{course.title}</span>
+            <span className="text-slate-300">/</span>
+          </>
+        )}
 
-      <span className="font-medium text-slate-700">
-        Lesson {lesson.order || 0}
-      </span>
+        <span className="font-medium text-slate-700">
+          Lesson {lesson.order || 0}
+        </span>
 
-      {lesson.duration && (
-        <>
-          <span className="text-slate-300">/</span>
-          <span>{lesson.duration}</span>
-        </>
-      )}
-    </div>
+        {lesson.duration && (
+          <>
+            <span className="text-slate-300">/</span>
+            <span>{lesson.duration}</span>
+          </>
+        )}
 
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_340px]">
+        {isLessonCompleted && (
+          <>
+            <span className="text-slate-300">/</span>
+            <span className="font-medium text-green-700">Completed</span>
+          </>
+        )}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0">
           <VideoBlock lesson={lesson} />
         </div>
@@ -847,6 +1179,30 @@ return (
               <p className="mt-3 text-sm text-slate-500">
                 No resources added for this lesson.
               </p>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="text-base font-semibold text-slate-900">
+              Completion
+            </h2>
+
+            {isLessonCompleted ? (
+              <div className="mt-3 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700">
+                This lesson is completed.
+              </div>
+            ) : quizRequired ? (
+              <div className="mt-3 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                Pass the quiz below to complete this lesson.
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={markLessonComplete}
+                className="mt-3 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+              >
+                Mark Lesson Complete
+              </button>
             )}
           </div>
 
@@ -904,9 +1260,17 @@ return (
             </span>
           )}
 
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
-            {program.title}
-          </span>
+          {hasQuiz && (
+            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs text-blue-700">
+              Quiz
+            </span>
+          )}
+
+          {isLessonCompleted && (
+            <span className="rounded-full bg-green-50 px-3 py-1 text-xs text-green-700">
+              Completed
+            </span>
+          )}
         </div>
 
         <h1 className="text-2xl font-bold text-slate-900">{lesson.title}</h1>
@@ -921,6 +1285,13 @@ return (
           </p>
         )}
       </div>
+
+      <QuizBlock
+        lesson={lesson}
+        quizResult={quizResult}
+        onQuizPassed={markLessonComplete}
+        onQuizResultChange={handleQuizResultChange}
+      />
 
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
