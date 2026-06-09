@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Timestamp } from "firebase/firestore";
+import { LayoutGrid, Library, Star } from "lucide-react";
 import { signInWithGoogle } from "@/lib/auth";
 import { useUserProfile } from "@/lib/useUserProfile";
 import { getAllModules } from "@/lib/modules";
@@ -102,20 +103,20 @@ const renderLinkedText = (text?: string) => {
 };
 
 const WorkspaceIcon = () => (
-  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-xl text-indigo-700 ring-1 ring-indigo-100">
-    ◈
+  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100">
+    <LayoutGrid size={21} strokeWidth={2.1} />
   </div>
 );
 
 const ResourceIcon = () => (
-  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-xl text-blue-700 ring-1 ring-blue-100">
-    ▦
+  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-700 ring-1 ring-blue-100">
+    <Library size={21} strokeWidth={2.1} />
   </div>
 );
 
 const BookmarkIcon = () => (
-  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-xl text-slate-700 ring-1 ring-slate-200">
-    ★
+  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-700 ring-1 ring-slate-200">
+    <Star size={21} strokeWidth={2.1} />
   </div>
 );
 
@@ -320,20 +321,26 @@ export default function DashboardPage() {
     {
       key: "workspaces",
       label: "My Workspaces",
+      description: "Open your assigned working areas.",
       href: "#workspaces",
       enabled: showWorkspaces,
+      icon: LayoutGrid,
     },
     {
       key: "resources",
       label: "Official Resources",
+      description: "Find official tools and reference materials.",
       href: "#resources",
       enabled: showResources,
+      icon: Library,
     },
     {
       key: "bookmarks",
       label: "My Bookmarks",
+      description: "Access your saved personal links.",
       href: "#bookmarks",
       enabled: showBookmarks,
+      icon: Star,
     },
   ].filter((item) => item.enabled);
 
@@ -818,56 +825,61 @@ export default function DashboardPage() {
 
   return (
     <div id="top">
-      <section className="mb-8 rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-              Welcome to Lumens Portal
-            </h1>
-          </div>
+      <section className="mb-10 overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-br from-white via-blue-50 to-slate-100 p-7 shadow-sm">
+        <div className="relative">
+          <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-blue-200/40 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-24 left-10 h-44 w-44 rounded-full bg-cyan-100/60 blur-3xl" />
 
-          <div className="grid min-w-[260px] grid-cols-3 gap-3">
-            <div className="rounded-2xl bg-slate-50 px-4 py-3 text-center ring-1 ring-slate-100">
-              <div className="text-2xl font-bold text-slate-900">
-                {workspaceModules.length}
+          <div className="relative">
+            <div className="flex flex-wrap items-start justify-between gap-6">
+              <div>
+                <div className="mb-3 inline-flex items-center rounded-full border border-blue-100 bg-white/70 px-3 py-1 text-xs font-semibold tracking-wide text-blue-700 shadow-sm">
+                  Lumens Portal
+                </div>
+
+                <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">
+                  Welcome to Lumens Portal
+                </h1>
+
+                <p className="mt-3 text-lg font-medium text-slate-600">
+                  Your Success, Our Focus
+                </p>
               </div>
-              <div className="mt-1 text-xs text-slate-500">Workspaces</div>
             </div>
 
-            <div className="rounded-2xl bg-slate-50 px-4 py-3 text-center ring-1 ring-slate-100">
-              <div className="text-2xl font-bold text-slate-900">
-                {resourceModules.length}
-              </div>
-              <div className="mt-1 text-xs text-slate-500">Resources</div>
-            </div>
+            {quickAccessItems.length > 0 && (
+              <div className="mt-7 rounded-2xl border border-white/80 bg-white/75 p-2 shadow-sm backdrop-blur">
+                <div className="grid gap-2 md:grid-cols-3">
+                  {quickAccessItems.map((item) => {
+                    const Icon = item.icon;
 
-            <div className="rounded-2xl bg-slate-50 px-4 py-3 text-center ring-1 ring-slate-100">
-              <div className="text-2xl font-bold text-slate-900">
-                {bookmarks.length}
+                    return (
+                      <a
+                        key={item.key}
+                        href={item.href}
+                        className="group flex items-center gap-4 rounded-xl border border-blue-100/70 bg-blue-50/55 px-4 py-4 shadow-sm transition hover:border-blue-600 hover:bg-blue-600 hover:text-white hover:shadow-md"
+                      >
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 ring-1 ring-blue-100 transition group-hover:bg-white/15 group-hover:text-white group-hover:ring-white/20">
+                          <Icon size={21} strokeWidth={2.1} />
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="font-semibold text-slate-900 transition group-hover:text-white">
+                            {item.label}
+                          </div>
+                          <div className="mt-0.5 line-clamp-1 text-sm text-slate-500 transition group-hover:text-blue-50">
+                            {item.description}
+                          </div>
+                        </div>
+                      </a>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="mt-1 text-xs text-slate-500">Bookmarks</div>
-            </div>
+            )}
           </div>
         </div>
       </section>
-
-      {quickAccessItems.length > 0 && (
-        <section className="mb-8">
-          <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-            <div className="grid gap-2 md:grid-cols-3">
-              {quickAccessItems.map((item) => (
-                <a
-                  key={item.key}
-                  href={item.href}
-                  className="flex items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-blue-50 hover:text-blue-700"
-                >
-                  {item.label}
-                </a>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
 
       {showNews && (
         <section className="mb-10">
