@@ -2,6 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import {
+  File,
+  FileText,
+  FolderOpen,
+  Link as LinkIcon,
+  MonitorPlay,
+  Presentation,
+  Video,
+} from "lucide-react";
 import { useParams } from "next/navigation";
 import { useUserProfile } from "@/lib/useUserProfile";
 import {
@@ -42,17 +51,19 @@ type QuizResult = {
 const getMaterialIcon = (type?: string) => {
   switch (type) {
     case "slides":
-      return "💡";
+      return Presentation;
     case "pdf":
-      return "📄";
+      return FileText;
     case "doc":
-      return "📝";
+      return File;
     case "video":
-      return "🎥";
+      return Video;
     case "folder":
-      return "📁";
+      return FolderOpen;
+    case "link":
+      return LinkIcon;
     default:
-      return "🔗";
+      return MonitorPlay;
   }
 };
 
@@ -286,10 +297,12 @@ function QuizBlock({
   const [submittedAnswers, setSubmittedAnswers] = useState<
     Record<number, number>
   >({});
+  const [isQuizOpen, setIsQuizOpen] = useState(false);
 
   useEffect(() => {
     setSelectedAnswers({});
     setSubmittedAnswers({});
+    setIsQuizOpen(false);
   }, [lesson.id]);
 
   if (!lesson.hasQuiz || questions.length === 0) {
@@ -298,6 +311,13 @@ function QuizBlock({
 
   const passScore = lesson.quizPassScore ?? 80;
   const isPassed = quizResult?.passed === true;
+
+  const handleTryAgain = () => {
+    setSelectedAnswers({});
+    setSubmittedAnswers({});
+    onQuizResultChange(null);
+    setIsQuizOpen(true);
+  };
 
   const handleSubmitQuiz = (e: React.FormEvent) => {
     e.preventDefault();
@@ -331,18 +351,13 @@ function QuizBlock({
 
     if (passed) {
       onQuizPassed();
+      setIsQuizOpen(false);
     }
-  };
-
-  const handleTryAgain = () => {
-    setSelectedAnswers({});
-    setSubmittedAnswers({});
-    onQuizResultChange(null);
   };
 
   return (
     <div className="mt-6 rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="mb-2 inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
             Knowledge Check
@@ -353,42 +368,62 @@ function QuizBlock({
           </h2>
 
           <p className="mt-1 text-sm text-slate-500">
-            Answer the questions below to confirm your understanding. Passing
-            score: {passScore}%.
+            {questions.length} questions · Passing score {passScore}% ·{" "}
+            {lesson.quizRequired ? "Required" : "Optional"}
           </p>
+
+          {quizResult && (
+            <div
+              className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-medium ${
+                quizResult.passed
+                  ? "bg-green-100 text-green-700"
+                  : "bg-red-50 text-red-600"
+              }`}
+            >
+              Score: {quizResult.score}% ·{" "}
+              {quizResult.passed ? "Passed" : "Try again"}
+            </div>
+          )}
         </div>
 
-        {quizResult && (
-          <div
-            className={`rounded-full px-3 py-1 text-xs font-medium ${
-              quizResult.passed
-                ? "bg-green-100 text-green-700"
-                : "bg-red-50 text-red-600"
-            }`}
-          >
-            Score: {quizResult.score}% ·{" "}
-            {quizResult.passed ? "Passed" : "Try again"}
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {isPassed ? (
+            <button
+              type="button"
+              onClick={handleTryAgain}
+              className="rounded-lg bg-white px-4 py-2 text-sm text-blue-700 ring-1 ring-blue-200 hover:bg-blue-50"
+            >
+              Retake Quiz
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsQuizOpen((prev) => !prev)}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+            >
+              {isQuizOpen ? "Hide Quiz" : quizResult ? "Review Quiz" : "Start Quiz"}
+            </button>
+          )}
+        </div>
       </div>
 
-      {isPassed ? (
-        <div className="rounded-xl border border-green-100 bg-green-50 p-4">
+      {isPassed && (
+        <div className="mt-4 rounded-xl border border-green-100 bg-green-50 p-4">
           <h3 className="font-semibold text-green-800">Quiz passed</h3>
           <p className="mt-1 text-sm text-green-700">
             This lesson has been marked as completed.
           </p>
-
-          <button
-            type="button"
-            onClick={handleTryAgain}
-            className="mt-3 rounded-lg bg-white px-4 py-2 text-sm text-green-700 ring-1 ring-green-200 hover:bg-green-100"
-          >
-            Retake Quiz
-          </button>
         </div>
-      ) : (
-        <form onSubmit={handleSubmitQuiz} className="space-y-4">
+      )}
+
+      {!isPassed && !isQuizOpen && (
+        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+          Click Start Quiz when you are ready.
+        </div>
+      )}
+
+      {!isPassed && isQuizOpen && (
+        <form onSubmit={handleSubmitQuiz} className="mt-5 space-y-4">
           {questions.map((question, questionIndex) => {
             const submittedAnswer = submittedAnswers[questionIndex];
             const hasSubmitted = submittedAnswer !== undefined;
@@ -425,7 +460,8 @@ function QuizBlock({
 
                 <div className="space-y-2">
                   {(question.options || []).map((option, optionIndex) => {
-                    const selected = selectedAnswers[questionIndex] === optionIndex;
+                    const selected =
+                      selectedAnswers[questionIndex] === optionIndex;
                     const correct = question.correctAnswerIndex === optionIndex;
 
                     return (
@@ -774,6 +810,20 @@ function LessonDetailContent() {
     if (currentIndex <= 0) return null;
 
     return content.lessons[currentIndex - 1] || null;
+  }, [content]);
+
+    const courseOutlineLessons = useMemo(() => {
+    if (!content?.course) return [] as TrainingLesson[];
+
+    return content.lessons
+      .filter((item) => item.courseId === content.course?.id)
+      .sort((a, b) => {
+        const orderDiff = (a.order || 0) - (b.order || 0);
+
+        if (orderDiff !== 0) return orderDiff;
+
+        return (a.title || "").localeCompare(b.title || "");
+      });
   }, [content]);
 
   const isLessonCompleted = completedLessonIds.includes(lessonId);
@@ -1149,39 +1199,7 @@ function LessonDetailContent() {
           <VideoBlock lesson={lesson} />
         </div>
 
-        <aside className="space-y-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-base font-semibold text-slate-900">
-              Lesson Resources
-            </h2>
-
-            {lesson.materials && lesson.materials.length > 0 ? (
-              <div className="mt-3 space-y-2">
-                {lesson.materials.map((material, index) => (
-                  <a
-                    key={`${lesson.id}-${index}`}
-                    href={material.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                  >
-                    <span className="shrink-0 text-base">
-                      {getMaterialIcon(material.type)}
-                    </span>
-
-                    <span className="min-w-0 truncate font-medium">
-                      {material.title}
-                    </span>
-                  </a>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-3 text-sm text-slate-500">
-                No resources added for this lesson.
-              </p>
-            )}
-          </div>
-
+                <aside className="space-y-3">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-base font-semibold text-slate-900">
               Completion
@@ -1206,31 +1224,68 @@ function LessonDetailContent() {
             )}
           </div>
 
-          <div className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            {previousLesson ? (
-              <Link
-                href={`/training/${programId}/lessons/${previousLesson.id}`}
-                className="rounded-lg bg-slate-100 px-4 py-2 text-center text-sm text-slate-700 hover:bg-slate-200"
-              >
-                Previous Lesson
-              </Link>
-            ) : (
-              <div className="rounded-lg bg-slate-50 px-4 py-2 text-center text-sm text-slate-400">
-                No previous lesson
-              </div>
-            )}
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-3">
+              <h2 className="text-base font-semibold text-slate-900">
+                Course Outline
+              </h2>
 
-            {nextLesson ? (
-              <Link
-                href={`/training/${programId}/lessons/${nextLesson.id}`}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-center text-sm text-white hover:bg-blue-700"
-              >
-                Next Lesson
-              </Link>
-            ) : (
-              <div className="rounded-lg bg-slate-50 px-4 py-2 text-center text-sm text-slate-400">
-                Last lesson
+              {course && (
+                <p className="mt-1 line-clamp-2 text-xs text-slate-500">
+                  {course.title}
+                </p>
+              )}
+            </div>
+
+            {courseOutlineLessons.length > 0 ? (
+              <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
+                {courseOutlineLessons.map((outlineLesson, index) => {
+                  const outlineLessonNumber = outlineLesson.order || index + 1;
+                  const isCurrentLesson = outlineLesson.id === lesson.id;
+                  const isCompleted = completedLessonIds.includes(
+                    outlineLesson.id
+                  );
+
+                  return (
+                    <Link
+                      key={outlineLesson.id}
+                      href={`/training/${programId}/lessons/${outlineLesson.id}`}
+                      className={`flex items-start gap-3 rounded-xl border px-3 py-2 text-sm transition ${
+                        isCurrentLesson
+                          ? "border-blue-200 bg-blue-50 text-blue-800"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                      }`}
+                    >
+                      <span
+                        className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                          isCompleted
+                            ? "bg-green-100 text-green-700"
+                            : isCurrentLesson
+                              ? "bg-blue-600 text-white"
+                              : "bg-slate-100 text-slate-500"
+                        }`}
+                      >
+                        {isCompleted ? "✓" : outlineLessonNumber}
+                      </span>
+
+                      <span className="min-w-0">
+                        <span className="block text-xs font-medium">
+                          Lesson {outlineLessonNumber}
+                          {isCurrentLesson ? " · Current" : ""}
+                        </span>
+
+                        <span className="mt-0.5 line-clamp-2 block text-sm font-medium">
+                          {outlineLesson.title}
+                        </span>
+                      </span>
+                    </Link>
+                  );
+                })}
               </div>
+            ) : (
+              <p className="text-sm text-slate-500">
+                No other lessons in this course.
+              </p>
             )}
           </div>
         </aside>
@@ -1283,6 +1338,52 @@ function LessonDetailContent() {
           <p className="mt-3 text-sm text-slate-500">
             No lesson description.
           </p>
+        )}
+      </div>
+
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Lesson Resources
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Supporting files and links for this lesson.
+          </p>
+        </div>
+
+        {lesson.materials && lesson.materials.length > 0 ? (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {lesson.materials.map((material, index) => {
+  const MaterialIcon = getMaterialIcon(material.type);
+
+  return (
+    <a
+      key={`${lesson.id}-resource-${index}`}
+      href={material.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+    >
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition group-hover:bg-blue-100 group-hover:text-blue-700">
+        <MaterialIcon className="h-4 w-4" />
+      </span>
+
+      <span className="min-w-0">
+        <span className="block truncate font-medium">
+          {material.title}
+        </span>
+        <span className="mt-0.5 block text-xs capitalize text-slate-400">
+          {material.type || "resource"}
+        </span>
+      </span>
+    </a>
+  );
+})}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
+            No resources added for this lesson.
+          </div>
         )}
       </div>
 
@@ -1380,31 +1481,7 @@ function LessonDetailContent() {
             ))}
           </div>
         )}
-      </div>
-
-      <div className="mt-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          {previousLesson && (
-            <Link
-              href={`/training/${programId}/lessons/${previousLesson.id}`}
-              className="inline-block rounded-lg bg-slate-100 px-4 py-2 text-sm text-slate-700 hover:bg-slate-200"
-            >
-              Previous Lesson
-            </Link>
-          )}
-        </div>
-
-        <div>
-          {nextLesson && (
-            <Link
-              href={`/training/${programId}/lessons/${nextLesson.id}`}
-              className="inline-block rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
-            >
-              Next Lesson
-            </Link>
-          )}
-        </div>
-      </div>
+      </div>   
     </div>
   );
 }
