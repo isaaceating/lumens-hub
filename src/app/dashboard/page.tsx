@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Timestamp } from "firebase/firestore";
-import { LayoutGrid, Library, Star } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  LayoutGrid,
+  Library,
+  MessageSquareText,
+  Star,
+} from "lucide-react";
 import { signInWithGoogle } from "@/lib/auth";
 import { useUserProfile } from "@/lib/useUserProfile";
 import { getAllModules } from "@/lib/modules";
@@ -123,23 +130,70 @@ const BookmarkIcon = () => (
 const SectionTitle = ({
   id,
   title,
+  description,
   action,
   showBackToTop = false,
+  align = "left",
 }: {
   id?: string;
   title: string;
+  description?: string;
   action?: React.ReactNode;
   showBackToTop?: boolean;
+  align?: "left" | "center";
 }) => {
+  if (align === "center") {
+    return (
+      <div id={id} className="mb-6 scroll-mt-24 text-center">
+        <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-blue-600" />
+
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+          {title}
+        </h2>
+
+        {description && (
+          <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+            {description}
+          </p>
+        )}
+
+        {(action || showBackToTop) && (
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
+            {action}
+
+            {showBackToTop && (
+              <a
+                href="#top"
+                className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+              >
+                ↑ Top
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
       id={id}
-      className="mb-5 flex scroll-mt-24 flex-wrap items-center justify-between gap-3"
+      className="mb-5 flex scroll-mt-24 flex-wrap items-end justify-between gap-3"
     >
-      <div>
-        <h2 className="text-xl font-bold tracking-tight text-slate-900">
-          {title}
-        </h2>
+      <div className="flex items-start gap-3">
+        <div className="mt-1.5 h-6 w-1 rounded-full bg-blue-600" />
+
+        <div>
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">
+            {title}
+          </h2>
+
+          {description && (
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              {description}
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -546,14 +600,14 @@ export default function DashboardPage() {
     const Icon = section === "workspace" ? WorkspaceIcon : ResourceIcon;
 
     const cardContent = (
-      <div className="h-full rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-md">
+      <div className="group h-full rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-md">
         <Icon />
 
         <h3 className="text-lg font-semibold text-slate-900">
           {module.name}
         </h3>
 
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="mt-2 text-sm leading-6 text-slate-500">
           {module.description || "Open this module."}
         </p>
       </div>
@@ -859,7 +913,7 @@ export default function DashboardPage() {
                         href={item.href}
                         className="group flex items-center gap-4 rounded-xl border border-blue-100/70 bg-blue-50/55 px-4 py-4 shadow-sm transition hover:border-blue-600 hover:bg-blue-600 hover:text-white hover:shadow-md"
                       >
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 ring-1 ring-blue-100 transition group-hover:bg-white/15 group-hover:text-white group-hover:ring-white/20">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/80 text-blue-700 ring-1 ring-blue-100 transition group-hover:bg-white/15 group-hover:text-white group-hover:ring-white/20">
                           <Icon size={21} strokeWidth={2.1} />
                         </div>
 
@@ -883,7 +937,7 @@ export default function DashboardPage() {
 
       {showNews && (
         <section className="mb-10">
-          <SectionTitle title="Latest News" />
+          <SectionTitle title="Newsroom" align="center" />
 
           {loadingNews ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
@@ -992,34 +1046,64 @@ export default function DashboardPage() {
 
       {showActivity && (
         <section className="mb-10">
-          <SectionTitle title="Training Activity" />
+          <SectionTitle title="Learning Hub" align="center" />
 
-          <div className="grid gap-5 lg:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h3 className="text-base font-semibold text-slate-900">
-                Recently Viewed Lessons
-              </h3>
-              <div className="mt-4 rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500">
-                Recently viewed lessons will appear here.
+          <div className="mx-auto grid max-w-4xl gap-5 md:grid-cols-2">
+            <Link
+              href="/training"
+              className="group flex min-h-[190px] flex-col items-center justify-center rounded-2xl border border-blue-100 bg-gradient-to-br from-white to-blue-50 p-6 text-center shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
+            >
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-200 transition group-hover:scale-105">
+                <BookOpen size={26} strokeWidth={2.1} />
               </div>
-            </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h3 className="text-base font-semibold text-slate-900">
-                Recent Discussions
+              <h3 className="mt-5 text-lg font-bold text-slate-900">
+                Continue Learning
               </h3>
-              <div className="mt-4 rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500">
-                Recent discussions will appear here after you join lesson
-                discussions.
+
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                Pick up your previous lesson.
+              </p>
+
+              <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm ring-1 ring-blue-100 transition group-hover:bg-blue-600 group-hover:text-white group-hover:ring-blue-600">
+                Continue
+                <ArrowRight size={16} strokeWidth={2.2} />
               </div>
-            </div>
+            </Link>
+
+            <Link
+              href="/training"
+              className="group flex min-h-[190px] flex-col items-center justify-center rounded-2xl border border-cyan-100 bg-gradient-to-br from-white to-cyan-50 p-6 text-center shadow-sm transition hover:-translate-y-1 hover:border-cyan-300 hover:shadow-md"
+            >
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-600 text-white shadow-lg shadow-cyan-200 transition group-hover:scale-105">
+                <MessageSquareText size={26} strokeWidth={2.1} />
+              </div>
+
+              <h3 className="mt-5 text-lg font-bold text-slate-900">
+                Recent Discussion
+              </h3>
+
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                See your latest conversation.
+              </p>
+
+              <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-cyan-700 shadow-sm ring-1 ring-cyan-100 transition group-hover:bg-cyan-600 group-hover:text-white group-hover:ring-cyan-600">
+                View Discussion
+                <ArrowRight size={16} strokeWidth={2.2} />
+              </div>
+            </Link>
           </div>
         </section>
       )}
 
       {showWorkspaces && (
         <section className="mb-10">
-          <SectionTitle id="workspaces" title="My Workspaces" showBackToTop />
+          <SectionTitle
+            id="workspaces"
+            title="My Workspaces"
+            description="Access your assigned working areas and internal tools."
+            showBackToTop
+          />
 
           {workspaceModules.length > 0 ? (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
@@ -1040,6 +1124,7 @@ export default function DashboardPage() {
           <SectionTitle
             id="resources"
             title="Official Resources"
+            description="Find official tools, references, and shared materials."
             showBackToTop
           />
 
@@ -1062,6 +1147,7 @@ export default function DashboardPage() {
           <SectionTitle
             id="bookmarks"
             title="My Bookmarks"
+            description="Save and organize your personal quick links."
             showBackToTop
             action={
               reorderingBookmarks ? (
