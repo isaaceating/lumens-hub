@@ -1,17 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import {
   File,
   FileText,
   FolderOpen,
   Link as LinkIcon,
   MonitorPlay,
+  Pin,
   Presentation,
+  Reply,
   Video,
 } from "lucide-react";
-import { useParams } from "next/navigation";
+
 import { useUserProfile } from "@/lib/useUserProfile";
 import {
   getPublishedTrainingCoursesByProgram,
@@ -31,6 +34,13 @@ import {
   setLessonCommentPinned,
   TrainingComment,
 } from "@/lib/trainingComments";
+import {
+  getTrainingProgress,
+  markTrainingLessonComplete,
+  mergeLocalCompletedLessonsToFirestore,
+  resetTrainingQuizProgress,
+  saveTrainingQuizProgress,
+} from "@/lib/trainingProgress";
 
 type LessonContent = {
   program: TrainingProgram;
@@ -72,6 +82,59 @@ const getCompletionStorageKey = (programId: string) =>
 
 const getQuizResultStorageKey = (programId: string, lessonId: string) =>
   `lumens-training-quiz-result:${programId}:${lessonId}`;
+
+const getLocalCompletedLessonIds = (programId: string) => {
+  if (typeof window === "undefined") return [] as string[];
+
+  try {
+    const stored = window.localStorage.getItem(getCompletionStorageKey(programId));
+    const parsed = stored ? JSON.parse(stored) : [];
+
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const setLocalCompletedLessonIds = (programId: string, lessonIds: string[]) => {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.setItem(
+    getCompletionStorageKey(programId),
+    JSON.stringify(lessonIds)
+  );
+};
+
+const getLocalQuizResult = (programId: string, lessonId: string) => {
+  if (typeof window === "undefined") return null as QuizResult | null;
+
+  try {
+    const stored = window.localStorage.getItem(
+      getQuizResultStorageKey(programId, lessonId)
+    );
+
+    return stored ? (JSON.parse(stored) as QuizResult) : null;
+  } catch {
+    return null;
+  }
+};
+
+const setLocalQuizResult = (
+  programId: string,
+  lessonId: string,
+  result: QuizResult | null
+) => {
+  if (typeof window === "undefined") return;
+
+  const key = getQuizResultStorageKey(programId, lessonId);
+
+  if (!result) {
+    window.localStorage.removeItem(key);
+    return;
+  }
+
+  window.localStorage.setItem(key, JSON.stringify(result));
+};
 
 const getYouTubeEmbedUrl = (url: string) => {
   try {
@@ -741,6 +804,7 @@ function LessonDetailContent() {
   );
   const [completedLessonIds, setCompletedLessonIds] = useState<string[]>([]);
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
+  const [progressLoading, setProgressLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [commentsLoading, setCommentsLoading] = useState(true);
   const [postingComment, setPostingComment] = useState(false);
@@ -847,37 +911,89 @@ function LessonDetailContent() {
 
   const saveCompletedLessonIds = (nextIds: string[]) => {
     setCompletedLessonIds(nextIds);
-
-    if (typeof window === "undefined") return;
-
-    window.localStorage.setItem(
-      getCompletionStorageKey(programId),
-      JSON.stringify(nextIds)
-    );
+    setLocalCompletedLessonIds(programId, nextIds);
   };
 
-  const markLessonComplete = () => {
+  const markLessonComplete = async () => {
     if (!lessonId) return;
 
     if (completedLessonIds.includes(lessonId)) return;
 
-    const nextIds = [...completedLessonIds, lessonId];
-    saveCompletedLessonIds(nextIds);
-  };
+    console.log("markLessonComplete debug", {
+      userId: user?.uid,
+      programId,
+      lessonId,
+      completedLessonIds,
+    });
 
-  const handleQuizResultChange = (result: QuizResult | null) => {
-    setQuizResult(result);
-
-    if (typeof window === "undefined") return;
-
-    const key = getQuizResultStorageKey(programId, lessonId);
-
-    if (!result) {
-      window.localStorage.removeItem(key);
+    if (!user) {
+      const nextIds = [...completedLessonIds, lessonId];
+      saveCompletedLessonIds(nextIds);
       return;
     }
 
-    window.localStorage.setItem(key, JSON.stringify(result));
+    try {
+      console.log("Writing progress to Firestore...", {
+        userId: user.uid,
+        programId,
+        lessonId,
+      });
+
+      const nextIds = await markTrainingLessonComplete({
+        userId: user.uid,
+        programId,
+        lessonId,
+      });
+
+      console.log("Firestore progress saved", nextIds);
+
+      saveCompletedLessonIds(nextIds);
+    } catch (error) {
+      console.error("Failed to save lesson progress to Firestore:", error);
+
+      const nextIds = [...completedLessonIds, lessonId];
+      saveCompletedLessonIds(nextIds);
+    }
+  };
+
+  const handleQuizResultChange = async (result: QuizResult | null) => {
+    setQuizResult(result);
+    setLocalQuizResult(programId, lessonId, result);
+
+    if (!user) return;
+
+    try {
+      if (!result) {
+        await resetTrainingQuizProgress({
+          userId: user.uid,
+          programId,
+          lessonId,
+          removeCompletion: false,
+        });
+
+        return;
+      }
+
+      const savedResult = await saveTrainingQuizProgress({
+        userId: user.uid,
+        programId,
+        lessonId,
+        score: result.score,
+        passed: result.passed,
+      });
+
+      const nextResult = {
+        score: savedResult.score,
+        passed: savedResult.passed,
+        submittedAt: savedResult.submittedAt,
+      };
+
+      setQuizResult(nextResult);
+      setLocalQuizResult(programId, lessonId, nextResult);
+      saveCompletedLessonIds(savedResult.completedLessonIds);
+    } catch (error) {
+      console.error("Failed to save quiz progress to Firestore:", error);
+    }
   };
 
   useEffect(() => {
@@ -937,32 +1053,65 @@ function LessonDetailContent() {
   }, [lessonId]);
 
   useEffect(() => {
-    if (!programId || typeof window === "undefined") return;
+    const loadProgress = async () => {
+      if (!programId || userLoading) return;
 
-    try {
-      const stored = window.localStorage.getItem(getCompletionStorageKey(programId));
-      const parsed = stored ? JSON.parse(stored) : [];
+      setProgressLoading(true);
 
-      setCompletedLessonIds(Array.isArray(parsed) ? parsed : []);
-    } catch {
-      setCompletedLessonIds([]);
-    }
-  }, [programId, lessonId]);
+      const localCompletedLessonIds = getLocalCompletedLessonIds(programId);
+      const localQuizResult = getLocalQuizResult(programId, lessonId);
 
-  useEffect(() => {
-    if (!programId || !lessonId || typeof window === "undefined") return;
+      try {
+        if (!user) {
+          setCompletedLessonIds(localCompletedLessonIds);
+          setQuizResult(localQuizResult);
+          return;
+        }
 
-    try {
-      const stored = window.localStorage.getItem(
-        getQuizResultStorageKey(programId, lessonId)
-      );
-      const parsed = stored ? JSON.parse(stored) : null;
+        const mergedCompletedLessonIds =
+          localCompletedLessonIds.length > 0
+            ? await mergeLocalCompletedLessonsToFirestore({
+                userId: user.uid,
+                programId,
+                localCompletedLessonIds,
+              })
+            : null;
 
-      setQuizResult(parsed);
-    } catch {
-      setQuizResult(null);
-    }
-  }, [programId, lessonId]);
+        const progress = await getTrainingProgress(user.uid, programId);
+
+        const firestoreCompletedLessonIds =
+          mergedCompletedLessonIds || progress?.completedLessonIds || [];
+
+        const firestoreQuizResult = progress?.quizProgress?.[lessonId]
+          ? {
+              score: progress.quizProgress[lessonId].score,
+              passed: progress.quizProgress[lessonId].passed,
+              submittedAt: progress.quizProgress[lessonId].submittedAt,
+            }
+          : null;
+
+        setCompletedLessonIds(firestoreCompletedLessonIds);
+        setLocalCompletedLessonIds(programId, firestoreCompletedLessonIds);
+
+        if (firestoreQuizResult) {
+          setQuizResult(firestoreQuizResult);
+          setLocalQuizResult(programId, lessonId, firestoreQuizResult);
+        } else {
+          setQuizResult(localQuizResult);
+        }
+      } catch (error) {
+        console.error("Failed to load training progress:", error);
+        setCompletedLessonIds(localCompletedLessonIds);
+        setQuizResult(localQuizResult);
+      } finally {
+        setProgressLoading(false);
+      }
+    };
+
+    loadProgress();
+  }, [programId, lessonId, user, userLoading]);
+
+
 
   const getCurrentUserName = () => {
     return user?.displayName || profile?.name || user?.email || "Lumens user";
