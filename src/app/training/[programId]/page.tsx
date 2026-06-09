@@ -13,6 +13,11 @@ import {
   TrainingLevel,
   TrainingProgram,
 } from "@/lib/training";
+import { useUserProfile } from "@/lib/useUserProfile";
+import {
+  getTrainingProgress,
+  mergeLocalCompletedLessonsToFirestore,
+} from "@/lib/trainingProgress";
 
 type ProgramContent = {
   program: TrainingProgram;
@@ -33,12 +38,36 @@ type LearningSection = {
 const getCompletionStorageKey = (programId: string) =>
   `lumens-training-completed-lessons:${programId}`;
 
+const getLocalCompletedLessonIds = (programId: string) => {
+  if (typeof window === "undefined") return [] as string[];
+
+  try {
+    const stored = window.localStorage.getItem(getCompletionStorageKey(programId));
+    const parsed = stored ? JSON.parse(stored) : [];
+
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const setLocalCompletedLessonIds = (programId: string, lessonIds: string[]) => {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.setItem(
+    getCompletionStorageKey(programId),
+    JSON.stringify(lessonIds)
+  );
+};
+
 function TrainingProgramContent() {
   const params = useParams();
   const programId = params.programId as string;
+  const { user, loading: userLoading } = useUserProfile();
 
   const [content, setContent] = useState<ProgramContent | null>(null);
   const [completedLessonIds, setCompletedLessonIds] = useState<string[]>([]);
+  const [progressLoading, setProgressLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -155,17 +184,45 @@ function TrainingProgramContent() {
   }, [programId]);
 
   useEffect(() => {
-    if (!programId || typeof window === "undefined") return;
+    const loadProgress = async () => {
+      if (!programId || userLoading) return;
 
-    try {
-      const stored = window.localStorage.getItem(getCompletionStorageKey(programId));
-      const parsed = stored ? JSON.parse(stored) : [];
+      setProgressLoading(true);
 
-      setCompletedLessonIds(Array.isArray(parsed) ? parsed : []);
-    } catch {
-      setCompletedLessonIds([]);
-    }
-  }, [programId]);
+      const localCompletedLessonIds = getLocalCompletedLessonIds(programId);
+
+      try {
+        if (!user) {
+          setCompletedLessonIds(localCompletedLessonIds);
+          return;
+        }
+
+        const mergedCompletedLessonIds =
+          localCompletedLessonIds.length > 0
+            ? await mergeLocalCompletedLessonsToFirestore({
+                userId: user.uid,
+                programId,
+                localCompletedLessonIds,
+              })
+            : null;
+
+        const progress = await getTrainingProgress(user.uid, programId);
+
+        const firestoreCompletedLessonIds =
+          mergedCompletedLessonIds || progress?.completedLessonIds || [];
+
+        setCompletedLessonIds(firestoreCompletedLessonIds);
+        setLocalCompletedLessonIds(programId, firestoreCompletedLessonIds);
+      } catch (error) {
+        console.error("Failed to load program progress:", error);
+        setCompletedLessonIds(localCompletedLessonIds);
+      } finally {
+        setProgressLoading(false);
+      }
+    };
+
+    loadProgress();
+  }, [programId, user, userLoading]);
 
   if (loading) {
     return <div className="text-slate-500">Loading training program...</div>;
@@ -244,7 +301,9 @@ function TrainingProgramContent() {
               </div>
 
               <div className="mt-3 text-xs text-slate-500">
-                {completedPublishedLessonIds.length} of {lessons.length} lessons completed
+                {progressLoading
+                  ? "Loading progress..."
+                  : `${completedPublishedLessonIds.length} of ${lessons.length} lessons completed`}
               </div>
             </div>
           </div>
