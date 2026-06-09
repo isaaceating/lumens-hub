@@ -4,19 +4,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  BookOpenCheck,
   Boxes,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  ExternalLink,
   GraduationCap,
   Home,
-  LayoutGrid,
-  Library,
+  HouseHeart,
+  MonitorSmartphone,
   Newspaper,
   Settings,
   Shield,
-  Star,
   Users,
 } from "lucide-react";
 import { useUserProfile } from "@/lib/useUserProfile";
@@ -233,7 +234,7 @@ export default function Sidebar() {
             isActive ? activeItemClass : inactiveItemClass
           }`}
         >
-          <Star size={18} strokeWidth={2.1} />
+          <ExternalLink size={18} strokeWidth={2.1} />
         </button>
       );
     }
@@ -246,7 +247,7 @@ export default function Sidebar() {
           isActive ? activeItemClass : inactiveItemClass
         }`}
       >
-        <Star size={18} strokeWidth={2.1} />
+        <ExternalLink size={18} strokeWidth={2.1} />
         <span>My Bookmarks</span>
       </button>
     );
@@ -408,7 +409,7 @@ export default function Sidebar() {
             <div className="min-w-0">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 shadow-lg shadow-blue-950/30">
-                  <LayoutGrid size={20} strokeWidth={2.2} />
+                  <HouseHeart size={20} strokeWidth={2.2} />
                 </div>
 
                 <div className="min-w-0">
@@ -439,7 +440,7 @@ export default function Sidebar() {
           <div className="pt-1">
             {renderExpandableItem(
               "Workspaces",
-              LayoutGrid,
+              MonitorSmartphone,
               workspacesOpen,
               () => setWorkspacesOpen((prev) => !prev)
             )}
@@ -460,7 +461,7 @@ export default function Sidebar() {
           </div>
 
           <div>
-            {renderExpandableItem("Resources", Library, resourcesOpen, () =>
+            {renderExpandableItem("Resources", BookOpenCheck, resourcesOpen, () =>
               setResourcesOpen((prev) => !prev)
             )}
 

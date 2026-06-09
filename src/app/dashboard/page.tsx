@@ -6,10 +6,10 @@ import { Timestamp } from "firebase/firestore";
 import {
   ArrowRight,
   BookOpen,
-  LayoutGrid,
-  Library,
+  BookOpenCheck,
+  ExternalLink,
   MessageSquareText,
-  Star,
+  MonitorSmartphone,
 } from "lucide-react";
 import { signInWithGoogle } from "@/lib/auth";
 import { useUserProfile } from "@/lib/useUserProfile";
@@ -21,7 +21,13 @@ import {
   updateUserBookmark,
   updateUserBookmarkOrder,
 } from "@/lib/bookmarks";
-import { getPublishedNews, NewsItem } from "@/lib/news";
+import {
+  DEFAULT_NEWS_CAROUSEL_SETTINGS,
+  getNewsCarouselSettings,
+  getPublishedNews,
+  NewsCarouselSettings,
+  NewsItem,
+} from "@/lib/news";
 
 type DashboardSectionKey =
   | "news"
@@ -30,7 +36,6 @@ type DashboardSectionKey =
   | "resources"
   | "bookmarks";
 
-const NEWS_AUTO_SLIDE_SECONDS = 2;
 const getModuleHref = (module: any) => {
   if (module.moduleKind === "embedded") {
     return `/modules/${module.id}`;
@@ -92,7 +97,9 @@ const renderLinkedText = (text?: string) => {
   const parts = text.split(urlRegex);
 
   return parts.map((part, index) => {
-    if (urlRegex.test(part)) {
+    const isUrl = /^https?:\/\/[^\s]+$/.test(part);
+
+    if (isUrl) {
       return (
         <a
           key={`${part}-${index}`}
@@ -112,19 +119,19 @@ const renderLinkedText = (text?: string) => {
 
 const WorkspaceIcon = () => (
   <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100">
-    <LayoutGrid size={21} strokeWidth={2.1} />
+    <MonitorSmartphone size={21} strokeWidth={2.1} />
   </div>
 );
 
 const ResourceIcon = () => (
   <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-700 ring-1 ring-blue-100">
-    <Library size={21} strokeWidth={2.1} />
+    <BookOpenCheck size={21} strokeWidth={2.1} />
   </div>
 );
 
 const BookmarkIcon = () => (
   <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-700 ring-1 ring-slate-200">
-    <Star size={21} strokeWidth={2.1} />
+    <ExternalLink size={21} strokeWidth={2.1} />
   </div>
 );
 
@@ -246,10 +253,12 @@ export default function DashboardPage() {
 
   const [signingIn, setSigningIn] = useState(false);
 
- const [activeNewsIndex, setActiveNewsIndex] = useState(0);
+  const [activeNewsIndex, setActiveNewsIndex] = useState(0);
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [isNewsCarouselPaused, setIsNewsCarouselPaused] = useState(false);
   const [newsAutoSlideKey, setNewsAutoSlideKey] = useState(0);
+  const [newsCarouselSettings, setNewsCarouselSettings] =
+    useState<NewsCarouselSettings>(DEFAULT_NEWS_CAROUSEL_SETTINGS);
 
   const enabledModules = profile?.enabledModules || [];
   const enabledDashboardSections = profile?.enabledDashboardSections;
@@ -289,24 +298,30 @@ export default function DashboardPage() {
   }, [loading, user, profile]);
 
   useEffect(() => {
-    const fetchNews = async () => {
+    const fetchNewsData = async () => {
       if (!user) return;
 
       setLoadingNews(true);
 
       try {
-        const data = await getPublishedNews();
-        setNewsItems(data);
+        const [newsData, settingsData] = await Promise.all([
+          getPublishedNews(),
+          getNewsCarouselSettings(),
+        ]);
+
+        setNewsItems(newsData);
+        setNewsCarouselSettings(settingsData);
         setActiveNewsIndex(0);
       } catch (error) {
-        console.error("Failed to load news:", error);
+        console.error("Failed to load news data:", error);
+        setNewsCarouselSettings(DEFAULT_NEWS_CAROUSEL_SETTINGS);
       } finally {
         setLoadingNews(false);
       }
     };
 
     if (!loading && user) {
-      fetchNews();
+      fetchNewsData();
     }
   }, [loading, user]);
 
@@ -340,27 +355,30 @@ export default function DashboardPage() {
   }, [loading, user, bookmarks.length]);
 
   useEffect(() => {
-  if (!showNews) return;
-  if (loadingNews) return;
-  if (selectedNews) return;
-  if (isNewsCarouselPaused) return;
-  if (newsItems.length <= 1) return;
+    if (!showNews) return;
+    if (loadingNews) return;
+    if (!newsCarouselSettings.autoSlideEnabled) return;
+    if (selectedNews) return;
+    if (isNewsCarouselPaused) return;
+    if (newsItems.length <= 1) return;
 
-  const timer = window.setInterval(() => {
-    setActiveNewsIndex((prev) => (prev + 1) % newsItems.length);
-  }, NEWS_AUTO_SLIDE_SECONDS * 1000);
+    const timer = window.setInterval(() => {
+      setActiveNewsIndex((prev) => (prev + 1) % newsItems.length);
+    }, newsCarouselSettings.autoSlideSeconds * 1000);
 
-  return () => {
-    window.clearInterval(timer);
-  };
-}, [
-  showNews,
-  loadingNews,
-  selectedNews,
-  isNewsCarouselPaused,
-  newsItems.length,
-  newsAutoSlideKey,
-]);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [
+    showNews,
+    loadingNews,
+    newsCarouselSettings.autoSlideEnabled,
+    newsCarouselSettings.autoSlideSeconds,
+    selectedNews,
+    isNewsCarouselPaused,
+    newsItems.length,
+    newsAutoSlideKey,
+  ]);
 
   const visibleFeatureModules = modules.filter(
     (module) =>
@@ -404,7 +422,7 @@ export default function DashboardPage() {
       description: "Open your assigned working areas.",
       href: "#workspaces",
       enabled: showWorkspaces,
-      icon: LayoutGrid,
+      icon: MonitorSmartphone,
     },
     {
       key: "resources",
@@ -412,7 +430,7 @@ export default function DashboardPage() {
       description: "Find official tools and reference materials.",
       href: "#resources",
       enabled: showResources,
-      icon: Library,
+      icon: BookOpenCheck,
     },
     {
       key: "bookmarks",
@@ -420,7 +438,7 @@ export default function DashboardPage() {
       description: "Access your saved personal links.",
       href: "#bookmarks",
       enabled: showBookmarks,
-      icon: Star,
+      icon: ExternalLink,
     },
   ].filter((item) => item.enabled);
 
@@ -608,26 +626,26 @@ export default function DashboardPage() {
   };
 
   const resetNewsAutoSlideTimer = () => {
-  setNewsAutoSlideKey((prev) => prev + 1);
-};
+    setNewsAutoSlideKey((prev) => prev + 1);
+  };
 
-const goToPreviousNews = () => {
-  if (newsItems.length === 0) return;
+  const goToPreviousNews = () => {
+    if (newsItems.length === 0) return;
 
-  resetNewsAutoSlideTimer();
+    resetNewsAutoSlideTimer();
 
-  setActiveNewsIndex((prev) =>
-    prev === 0 ? newsItems.length - 1 : prev - 1
-  );
-};
+    setActiveNewsIndex((prev) =>
+      prev === 0 ? newsItems.length - 1 : prev - 1
+    );
+  };
 
-const goToNextNews = () => {
-  if (newsItems.length === 0) return;
+  const goToNextNews = () => {
+    if (newsItems.length === 0) return;
 
-  resetNewsAutoSlideTimer();
+    resetNewsAutoSlideTimer();
 
-  setActiveNewsIndex((prev) => (prev + 1) % newsItems.length);
-};
+    setActiveNewsIndex((prev) => (prev + 1) % newsItems.length);
+  };
 
   const renderModuleCard = (module: any, section: "workspace" | "resource") => {
     const href = getModuleHref(module);
@@ -984,10 +1002,10 @@ const goToNextNews = () => {
           ) : (
             <>
               <div
-  className="mx-auto flex max-w-6xl items-center gap-4"
-  onMouseEnter={() => setIsNewsCarouselPaused(true)}
-  onMouseLeave={() => setIsNewsCarouselPaused(false)}
->
+                className="mx-auto flex max-w-6xl items-center gap-4"
+                onMouseEnter={() => setIsNewsCarouselPaused(true)}
+                onMouseLeave={() => setIsNewsCarouselPaused(false)}
+              >
                 <button
                   type="button"
                   onClick={goToPreviousNews}
@@ -1068,9 +1086,9 @@ const goToNextNews = () => {
                     key={news.id}
                     type="button"
                     onClick={() => {
-  resetNewsAutoSlideTimer();
-  setActiveNewsIndex(index);
-}}
+                      resetNewsAutoSlideTimer();
+                      setActiveNewsIndex(index);
+                    }}
                     className={`h-2.5 rounded-full transition ${
                       activeNewsIndex === index
                         ? "w-8 bg-blue-700"

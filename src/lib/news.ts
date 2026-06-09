@@ -6,6 +6,7 @@ import {
   getDoc,
   getDocs,
   query,
+  setDoc,
   Timestamp,
   updateDoc,
   where,
@@ -38,6 +39,54 @@ export type CreateNewsInput = {
 };
 
 export type UpdateNewsInput = Partial<CreateNewsInput>;
+
+export type NewsCarouselSettings = {
+  autoSlideEnabled: boolean;
+  autoSlideSeconds: 2 | 3 | 4 | 5;
+  updatedAt?: Timestamp;
+};
+
+export const DEFAULT_NEWS_CAROUSEL_SETTINGS: NewsCarouselSettings = {
+  autoSlideEnabled: true,
+  autoSlideSeconds: 2,
+};
+
+const NEWS_CAROUSEL_SETTINGS_REF = doc(db, "siteSettings", "newsCarousel");
+
+export const getNewsCarouselSettings = async () => {
+  const settingsSnap = await getDoc(NEWS_CAROUSEL_SETTINGS_REF);
+
+  if (!settingsSnap.exists()) {
+    return DEFAULT_NEWS_CAROUSEL_SETTINGS;
+  }
+
+  const data = settingsSnap.data() as Partial<NewsCarouselSettings>;
+  const allowedSeconds = [2, 3, 4, 5];
+
+  return {
+    autoSlideEnabled:
+      typeof data.autoSlideEnabled === "boolean"
+        ? data.autoSlideEnabled
+        : DEFAULT_NEWS_CAROUSEL_SETTINGS.autoSlideEnabled,
+    autoSlideSeconds: allowedSeconds.includes(data.autoSlideSeconds as number)
+      ? (data.autoSlideSeconds as 2 | 3 | 4 | 5)
+      : DEFAULT_NEWS_CAROUSEL_SETTINGS.autoSlideSeconds,
+    updatedAt: data.updatedAt,
+  };
+};
+
+export const updateNewsCarouselSettings = async (
+  settings: Omit<NewsCarouselSettings, "updatedAt">
+) => {
+  await setDoc(
+    NEWS_CAROUSEL_SETTINGS_REF,
+    {
+      ...settings,
+      updatedAt: Timestamp.now(),
+    },
+    { merge: true }
+  );
+};
 
 const sortNews = (items: NewsItem[]) => {
   return [...items].sort((a, b) => {
