@@ -24,6 +24,14 @@ export type TrainingMaterial = {
   order?: number;
 };
 
+export type TrainingQuizQuestion = {
+  question: string;
+  options: string[];
+  correctAnswerIndex: number;
+  explanation?: string;
+  order?: number;
+};
+
 export type TrainingProgram = {
   id: string;
   title: string;
@@ -71,6 +79,10 @@ export type TrainingLesson = {
   materials?: TrainingMaterial[];
   allowComments?: boolean;
   requireCompletion?: boolean;
+  hasQuiz?: boolean;
+  quizRequired?: boolean;
+  quizPassScore?: number;
+  quizQuestions?: TrainingQuizQuestion[];
   status: TrainingStatus;
   order?: number;
   createdAt?: string;
@@ -384,6 +396,10 @@ export const createTrainingLesson = async (
 ) => {
   await addDoc(collection(db, "trainingLessons"), {
     ...lesson,
+    hasQuiz: lesson.hasQuiz ?? false,
+    quizRequired: lesson.quizRequired ?? false,
+    quizPassScore: lesson.quizPassScore ?? 80,
+    quizQuestions: lesson.quizQuestions || [],
     createdAt: now(),
     updatedAt: now(),
   });
@@ -504,6 +520,10 @@ export const duplicateTrainingProgram = async (programId: string) => {
       materials: lesson.materials || [],
       allowComments: lesson.allowComments ?? false,
       requireCompletion: lesson.requireCompletion ?? true,
+      hasQuiz: lesson.hasQuiz ?? false,
+      quizRequired: lesson.quizRequired ?? false,
+      quizPassScore: lesson.quizPassScore ?? 80,
+      quizQuestions: lesson.quizQuestions || [],
       status: "draft",
       order: lesson.order || 0,
       createdAt,
