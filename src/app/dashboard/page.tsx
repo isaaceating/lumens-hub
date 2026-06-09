@@ -30,6 +30,7 @@ type DashboardSectionKey =
   | "resources"
   | "bookmarks";
 
+const NEWS_AUTO_SLIDE_SECONDS = 2;
 const getModuleHref = (module: any) => {
   if (module.moduleKind === "embedded") {
     return `/modules/${module.id}`;
@@ -245,8 +246,10 @@ export default function DashboardPage() {
 
   const [signingIn, setSigningIn] = useState(false);
 
-  const [activeNewsIndex, setActiveNewsIndex] = useState(0);
+ const [activeNewsIndex, setActiveNewsIndex] = useState(0);
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
+  const [isNewsCarouselPaused, setIsNewsCarouselPaused] = useState(false);
+  const [newsAutoSlideKey, setNewsAutoSlideKey] = useState(0);
 
   const enabledModules = profile?.enabledModules || [];
   const enabledDashboardSections = profile?.enabledDashboardSections;
@@ -335,6 +338,29 @@ export default function DashboardPage() {
       window.clearTimeout(timer);
     };
   }, [loading, user, bookmarks.length]);
+
+  useEffect(() => {
+  if (!showNews) return;
+  if (loadingNews) return;
+  if (selectedNews) return;
+  if (isNewsCarouselPaused) return;
+  if (newsItems.length <= 1) return;
+
+  const timer = window.setInterval(() => {
+    setActiveNewsIndex((prev) => (prev + 1) % newsItems.length);
+  }, NEWS_AUTO_SLIDE_SECONDS * 1000);
+
+  return () => {
+    window.clearInterval(timer);
+  };
+}, [
+  showNews,
+  loadingNews,
+  selectedNews,
+  isNewsCarouselPaused,
+  newsItems.length,
+  newsAutoSlideKey,
+]);
 
   const visibleFeatureModules = modules.filter(
     (module) =>
@@ -581,19 +607,27 @@ export default function DashboardPage() {
     }
   };
 
-  const goToPreviousNews = () => {
-    if (newsItems.length === 0) return;
+  const resetNewsAutoSlideTimer = () => {
+  setNewsAutoSlideKey((prev) => prev + 1);
+};
 
-    setActiveNewsIndex((prev) =>
-      prev === 0 ? newsItems.length - 1 : prev - 1
-    );
-  };
+const goToPreviousNews = () => {
+  if (newsItems.length === 0) return;
 
-  const goToNextNews = () => {
-    if (newsItems.length === 0) return;
+  resetNewsAutoSlideTimer();
 
-    setActiveNewsIndex((prev) => (prev + 1) % newsItems.length);
-  };
+  setActiveNewsIndex((prev) =>
+    prev === 0 ? newsItems.length - 1 : prev - 1
+  );
+};
+
+const goToNextNews = () => {
+  if (newsItems.length === 0) return;
+
+  resetNewsAutoSlideTimer();
+
+  setActiveNewsIndex((prev) => (prev + 1) % newsItems.length);
+};
 
   const renderModuleCard = (module: any, section: "workspace" | "resource") => {
     const href = getModuleHref(module);
@@ -949,7 +983,11 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              <div className="mx-auto flex max-w-6xl items-center gap-4">
+              <div
+  className="mx-auto flex max-w-6xl items-center gap-4"
+  onMouseEnter={() => setIsNewsCarouselPaused(true)}
+  onMouseLeave={() => setIsNewsCarouselPaused(false)}
+>
                 <button
                   type="button"
                   onClick={goToPreviousNews}
@@ -1029,7 +1067,10 @@ export default function DashboardPage() {
                   <button
                     key={news.id}
                     type="button"
-                    onClick={() => setActiveNewsIndex(index)}
+                    onClick={() => {
+  resetNewsAutoSlideTimer();
+  setActiveNewsIndex(index);
+}}
                     className={`h-2.5 rounded-full transition ${
                       activeNewsIndex === index
                         ? "w-8 bg-blue-700"
