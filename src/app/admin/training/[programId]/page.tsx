@@ -19,6 +19,7 @@ import {
   TrainingLevel,
   TrainingMaterial,
   TrainingProgram,
+  TrainingQuizQuestion,
   TrainingStatus,
   updateTrainingCourse,
   updateTrainingLesson,
@@ -36,6 +37,14 @@ const createEmptyMaterial = (order: number): TrainingMaterial => ({
   order,
 });
 
+const createEmptyQuizQuestion = (order: number): TrainingQuizQuestion => ({
+  question: "",
+  options: ["", "", "", ""],
+  correctAnswerIndex: 0,
+  explanation: "",
+  order,
+});
+
 const normalizeMaterials = (materials: TrainingMaterial[]) => {
   return materials
     .map((material, index) => ({
@@ -45,6 +54,30 @@ const normalizeMaterials = (materials: TrainingMaterial[]) => {
       order: material.order || index + 1,
     }))
     .filter((material) => material.title && material.url);
+};
+
+const normalizeQuizQuestions = (questions: TrainingQuizQuestion[]) => {
+  return questions
+    .map((question, index) => {
+      const options = (question.options || [])
+        .map((option) => option.trim())
+        .filter(Boolean);
+
+      const safeCorrectAnswerIndex =
+        question.correctAnswerIndex >= 0 &&
+        question.correctAnswerIndex < options.length
+          ? question.correctAnswerIndex
+          : 0;
+
+      return {
+        question: question.question.trim(),
+        options,
+        correctAnswerIndex: safeCorrectAnswerIndex,
+        explanation: question.explanation?.trim() || "",
+        order: question.order || index + 1,
+      };
+    })
+    .filter((question) => question.question && question.options.length >= 2);
 };
 
 function EditTrainingProgramContent() {
@@ -106,6 +139,10 @@ function EditTrainingProgramContent() {
     materials: [createEmptyMaterial(1)] as TrainingMaterial[],
     allowComments: true,
     requireCompletion: true,
+    hasQuiz: false,
+    quizRequired: false,
+    quizPassScore: 80 as number | "",
+    quizQuestions: [createEmptyQuizQuestion(1)] as TrainingQuizQuestion[],
     status: "draft" as TrainingStatus,
     order: 1 as number | "",
   });
@@ -135,6 +172,10 @@ function EditTrainingProgramContent() {
     materials: [createEmptyMaterial(1)] as TrainingMaterial[],
     allowComments: true,
     requireCompletion: true,
+    hasQuiz: false,
+    quizRequired: false,
+    quizPassScore: 80 as number | "",
+    quizQuestions: [createEmptyQuizQuestion(1)] as TrainingQuizQuestion[],
     status: "draft" as TrainingStatus,
     order: 1 as number | "",
   });
@@ -171,10 +212,6 @@ function EditTrainingProgramContent() {
 
     return map;
   }, [courses, lessons]);
-
-  const selectedCourse = useMemo(() => {
-    return courses.find((course) => course.id === lessonForm.courseId) || null;
-  }, [courses, lessonForm.courseId]);
 
   const fetchData = async () => {
     if (!programId) return;
@@ -277,7 +314,12 @@ function EditTrainingProgramContent() {
 
     setLessonForm((prev) => ({
       ...prev,
-      [name]: name === "order" ? (value === "" ? "" : Number(value)) : value,
+      [name]:
+        name === "order" || name === "quizPassScore"
+          ? value === ""
+            ? ""
+            : Number(value)
+          : value,
     }));
   };
 
@@ -327,7 +369,12 @@ function EditTrainingProgramContent() {
 
     setEditLessonForm((prev) => ({
       ...prev,
-      [name]: name === "order" ? (value === "" ? "" : Number(value)) : value,
+      [name]:
+        name === "order" || name === "quizPassScore"
+          ? value === ""
+            ? ""
+            : Number(value)
+          : value,
     }));
   };
 
@@ -422,6 +469,142 @@ function EditTrainingProgramContent() {
     }));
   };
 
+  const updateLessonQuizQuestion = (
+    index: number,
+    field: keyof TrainingQuizQuestion,
+    value: string | number
+  ) => {
+    setLessonForm((prev) => {
+      const nextQuestions = [...prev.quizQuestions];
+
+      nextQuestions[index] = {
+        ...nextQuestions[index],
+        [field]:
+          field === "correctAnswerIndex" || field === "order"
+            ? Number(value)
+            : value,
+      };
+
+      return {
+        ...prev,
+        quizQuestions: nextQuestions,
+      };
+    });
+  };
+
+  const updateLessonQuizOption = (
+    questionIndex: number,
+    optionIndex: number,
+    value: string
+  ) => {
+    setLessonForm((prev) => {
+      const nextQuestions = [...prev.quizQuestions];
+      const nextOptions = [...(nextQuestions[questionIndex].options || [])];
+
+      nextOptions[optionIndex] = value;
+
+      nextQuestions[questionIndex] = {
+        ...nextQuestions[questionIndex],
+        options: nextOptions,
+      };
+
+      return {
+        ...prev,
+        quizQuestions: nextQuestions,
+      };
+    });
+  };
+
+  const addLessonQuizQuestion = () => {
+    setLessonForm((prev) => ({
+      ...prev,
+      quizQuestions: [
+        ...prev.quizQuestions,
+        createEmptyQuizQuestion(prev.quizQuestions.length + 1),
+      ],
+    }));
+  };
+
+  const removeLessonQuizQuestion = (index: number) => {
+    setLessonForm((prev) => ({
+      ...prev,
+      quizQuestions:
+        prev.quizQuestions.length === 1
+          ? [createEmptyQuizQuestion(1)]
+          : prev.quizQuestions.filter(
+              (_, questionIndex) => questionIndex !== index
+            ),
+    }));
+  };
+
+  const updateEditLessonQuizQuestion = (
+    index: number,
+    field: keyof TrainingQuizQuestion,
+    value: string | number
+  ) => {
+    setEditLessonForm((prev) => {
+      const nextQuestions = [...prev.quizQuestions];
+
+      nextQuestions[index] = {
+        ...nextQuestions[index],
+        [field]:
+          field === "correctAnswerIndex" || field === "order"
+            ? Number(value)
+            : value,
+      };
+
+      return {
+        ...prev,
+        quizQuestions: nextQuestions,
+      };
+    });
+  };
+
+  const updateEditLessonQuizOption = (
+    questionIndex: number,
+    optionIndex: number,
+    value: string
+  ) => {
+    setEditLessonForm((prev) => {
+      const nextQuestions = [...prev.quizQuestions];
+      const nextOptions = [...(nextQuestions[questionIndex].options || [])];
+
+      nextOptions[optionIndex] = value;
+
+      nextQuestions[questionIndex] = {
+        ...nextQuestions[questionIndex],
+        options: nextOptions,
+      };
+
+      return {
+        ...prev,
+        quizQuestions: nextQuestions,
+      };
+    });
+  };
+
+  const addEditLessonQuizQuestion = () => {
+    setEditLessonForm((prev) => ({
+      ...prev,
+      quizQuestions: [
+        ...prev.quizQuestions,
+        createEmptyQuizQuestion(prev.quizQuestions.length + 1),
+      ],
+    }));
+  };
+
+  const removeEditLessonQuizQuestion = (index: number) => {
+    setEditLessonForm((prev) => ({
+      ...prev,
+      quizQuestions:
+        prev.quizQuestions.length === 1
+          ? [createEmptyQuizQuestion(1)]
+          : prev.quizQuestions.filter(
+              (_, questionIndex) => questionIndex !== index
+            ),
+    }));
+  };
+
   const handleSaveProgram = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -442,7 +625,6 @@ function EditTrainingProgramContent() {
       });
 
       await fetchData();
-      alert("Program saved.");
     } catch (error) {
       console.error("Failed to save program:", error);
       alert("Failed to save program.");
@@ -455,7 +637,7 @@ function EditTrainingProgramContent() {
     e.preventDefault();
 
     if (!levelForm.title.trim()) {
-      alert("Level title is required.");
+      alert("Section title is required.");
       return;
     }
 
@@ -479,8 +661,8 @@ function EditTrainingProgramContent() {
 
       await fetchData();
     } catch (error) {
-      console.error("Failed to create level:", error);
-      alert("Failed to create level.");
+      console.error("Failed to create section:", error);
+      alert("Failed to create section.");
     } finally {
       setSavingLevel(false);
     }
@@ -488,11 +670,6 @@ function EditTrainingProgramContent() {
 
   const handleCreateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!courseForm.levelId) {
-      alert("Please create or select a level first.");
-      return;
-    }
 
     if (!courseForm.title.trim()) {
       alert("Course title is required.");
@@ -504,7 +681,7 @@ function EditTrainingProgramContent() {
     try {
       await createTrainingCourse({
         programId,
-        levelId: courseForm.levelId,
+        levelId: courseForm.levelId || "",
         title: courseForm.title.trim(),
         description: courseForm.description.trim(),
         status: courseForm.status,
@@ -515,7 +692,6 @@ function EditTrainingProgramContent() {
         ...prev,
         title: "",
         description: "",
-        status: "draft",
         order: courses.length + 2,
       }));
 
@@ -549,6 +725,14 @@ function EditTrainingProgramContent() {
     }
 
     const materials = normalizeMaterials(lessonForm.materials);
+    const quizQuestions = lessonForm.hasQuiz
+      ? normalizeQuizQuestions(lessonForm.quizQuestions)
+      : [];
+
+    if (lessonForm.hasQuiz && quizQuestions.length === 0) {
+      alert("Please add at least one valid quiz question.");
+      return;
+    }
 
     setSavingLesson(true);
 
@@ -565,6 +749,11 @@ function EditTrainingProgramContent() {
         materials,
         allowComments: lessonForm.allowComments,
         requireCompletion: lessonForm.requireCompletion,
+        hasQuiz: lessonForm.hasQuiz,
+        quizRequired: lessonForm.hasQuiz ? lessonForm.quizRequired : false,
+        quizPassScore:
+          lessonForm.quizPassScore === "" ? 80 : Number(lessonForm.quizPassScore),
+        quizQuestions,
         status: lessonForm.status,
         order: lessonForm.order === "" ? 0 : Number(lessonForm.order),
       });
@@ -576,6 +765,10 @@ function EditTrainingProgramContent() {
         videoUrl: "",
         duration: "",
         materials: [createEmptyMaterial(1)],
+        hasQuiz: false,
+        quizRequired: false,
+        quizPassScore: 80,
+        quizQuestions: [createEmptyQuizQuestion(1)],
         order: lessons.length + 2,
       }));
 
@@ -633,6 +826,13 @@ function EditTrainingProgramContent() {
           : [createEmptyMaterial(1)],
       allowComments: lesson.allowComments ?? true,
       requireCompletion: lesson.requireCompletion ?? true,
+      hasQuiz: lesson.hasQuiz ?? false,
+      quizRequired: lesson.quizRequired ?? false,
+      quizPassScore: lesson.quizPassScore ?? 80,
+      quizQuestions:
+        lesson.quizQuestions && lesson.quizQuestions.length > 0
+          ? lesson.quizQuestions
+          : [createEmptyQuizQuestion(1)],
       status: lesson.status || "draft",
       order: lesson.order ?? 1,
     });
@@ -646,7 +846,7 @@ function EditTrainingProgramContent() {
 
   const handleSaveLevelEdit = async (levelId: string) => {
     if (!editLevelForm.title.trim()) {
-      alert("Level title is required.");
+      alert("Section title is required.");
       return;
     }
 
@@ -663,19 +863,14 @@ function EditTrainingProgramContent() {
       cancelEdit();
       await fetchData();
     } catch (error) {
-      console.error("Failed to update level:", error);
-      alert("Failed to update level.");
+      console.error("Failed to update section:", error);
+      alert("Failed to update section.");
     } finally {
       setUpdatingLevelId(null);
     }
   };
 
   const handleSaveCourseEdit = async (courseId: string) => {
-    if (!editCourseForm.levelId) {
-      alert("Please select a level.");
-      return;
-    }
-
     if (!editCourseForm.title.trim()) {
       alert("Course title is required.");
       return;
@@ -685,7 +880,7 @@ function EditTrainingProgramContent() {
 
     try {
       await updateTrainingCourse(courseId, {
-        levelId: editCourseForm.levelId,
+        levelId: editCourseForm.levelId || "",
         title: editCourseForm.title.trim(),
         description: editCourseForm.description.trim(),
         status: editCourseForm.status,
@@ -697,7 +892,7 @@ function EditTrainingProgramContent() {
       await Promise.all(
         courseLessons.map((lesson) =>
           updateTrainingLesson(lesson.id, {
-            levelId: editCourseForm.levelId,
+            levelId: editCourseForm.levelId || "",
           })
         )
       );
@@ -732,6 +927,15 @@ function EditTrainingProgramContent() {
       return;
     }
 
+    const quizQuestions = editLessonForm.hasQuiz
+      ? normalizeQuizQuestions(editLessonForm.quizQuestions)
+      : [];
+
+    if (editLessonForm.hasQuiz && quizQuestions.length === 0) {
+      alert("Please add at least one valid quiz question.");
+      return;
+    }
+
     setUpdatingLessonId(lessonId);
 
     try {
@@ -746,6 +950,13 @@ function EditTrainingProgramContent() {
         materials: normalizeMaterials(editLessonForm.materials),
         allowComments: editLessonForm.allowComments,
         requireCompletion: editLessonForm.requireCompletion,
+        hasQuiz: editLessonForm.hasQuiz,
+        quizRequired: editLessonForm.hasQuiz ? editLessonForm.quizRequired : false,
+        quizPassScore:
+          editLessonForm.quizPassScore === ""
+            ? 80
+            : Number(editLessonForm.quizPassScore),
+        quizQuestions,
         status: editLessonForm.status,
         order: editLessonForm.order === "" ? 0 : Number(editLessonForm.order),
       });
@@ -764,11 +975,11 @@ function EditTrainingProgramContent() {
     const levelCourses = coursesByLevel.get(level.id) || [];
 
     if (levelCourses.length > 0) {
-      alert("Please delete courses under this level first.");
+      alert("Please delete courses under this section first.");
       return;
     }
 
-    const confirmed = window.confirm(`Delete level "${level.title}"?`);
+    const confirmed = window.confirm(`Delete section "${level.title}"?`);
 
     if (!confirmed) return;
 
@@ -776,8 +987,8 @@ function EditTrainingProgramContent() {
       await deleteTrainingLevel(level.id);
       await fetchData();
     } catch (error) {
-      console.error("Failed to delete level:", error);
-      alert("Failed to delete level.");
+      console.error("Failed to delete section:", error);
+      alert("Failed to delete section.");
     }
   };
 
@@ -816,9 +1027,29 @@ function EditTrainingProgramContent() {
     }
   };
 
-  const renderCreateMaterialsEditor = () => {
+  const renderMaterialsEditor = ({
+    materials,
+    onAdd,
+    onRemove,
+    onUpdate,
+    editMode = false,
+  }: {
+    materials: TrainingMaterial[];
+    onAdd: () => void;
+    onRemove: (index: number) => void;
+    onUpdate: (
+      index: number,
+      field: keyof TrainingMaterial,
+      value: string | number
+    ) => void;
+    editMode?: boolean;
+  }) => {
     return (
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div
+        className={`rounded-xl border border-slate-200 bg-slate-50 p-4 ${
+          editMode ? "md:col-span-2" : ""
+        }`}
+      >
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <h4 className="font-semibold text-slate-900">Materials</h4>
@@ -829,7 +1060,7 @@ function EditTrainingProgramContent() {
 
           <button
             type="button"
-            onClick={addLessonMaterial}
+            onClick={onAdd}
             className="rounded-lg bg-slate-900 px-3 py-2 text-xs text-white hover:bg-slate-700"
           >
             + Add Material
@@ -837,9 +1068,9 @@ function EditTrainingProgramContent() {
         </div>
 
         <div className="space-y-4">
-          {lessonForm.materials.map((material, index) => (
+          {materials.map((material, index) => (
             <div
-              key={`create-material-${index}`}
+              key={`material-${editMode ? "edit" : "create"}-${index}`}
               className="rounded-xl border border-slate-200 bg-white p-4"
             >
               <div className="mb-3 flex items-center justify-between gap-3">
@@ -849,7 +1080,7 @@ function EditTrainingProgramContent() {
 
                 <button
                   type="button"
-                  onClick={() => removeLessonMaterial(index)}
+                  onClick={() => onRemove(index)}
                   className="text-xs text-red-600 hover:underline"
                 >
                   Remove
@@ -859,18 +1090,14 @@ function EditTrainingProgramContent() {
               <div className="grid gap-3">
                 <input
                   value={material.title}
-                  onChange={(e) =>
-                    updateLessonMaterial(index, "title", e.target.value)
-                  }
+                  onChange={(e) => onUpdate(index, "title", e.target.value)}
                   placeholder="Material title"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 />
 
                 <select
                   value={material.type}
-                  onChange={(e) =>
-                    updateLessonMaterial(index, "type", e.target.value)
-                  }
+                  onChange={(e) => onUpdate(index, "type", e.target.value)}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 >
                   {materialTypeOptions.map((type) => (
@@ -882,112 +1109,15 @@ function EditTrainingProgramContent() {
 
                 <input
                   value={material.url}
-                  onChange={(e) =>
-                    updateLessonMaterial(index, "url", e.target.value)
-                  }
+                  onChange={(e) => onUpdate(index, "url", e.target.value)}
                   placeholder="Material URL"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                />
-
-                <div className="grid gap-3 md:grid-cols-2">
-
-                  <input
-                    type="number"
-                    value={material.order || index + 1}
-                    onChange={(e) =>
-                      updateLessonMaterial(index, "order", e.target.value)
-                    }
-                    placeholder="Order"
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const renderEditMaterialsEditor = () => {
-    return (
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 md:col-span-2">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h4 className="font-semibold text-slate-900">Materials</h4>
-            <p className="mt-1 text-xs text-slate-500">
-              Manage multiple materials for this lesson.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={addEditLessonMaterial}
-            className="rounded-lg bg-slate-900 px-3 py-2 text-xs text-white hover:bg-slate-700"
-          >
-            + Add Material
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          {editLessonForm.materials.map((material, index) => (
-            <div
-              key={`edit-material-${index}`}
-              className="rounded-xl border border-slate-200 bg-white p-4"
-            >
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <h5 className="text-sm font-semibold text-slate-700">
-                  Material {index + 1}
-                </h5>
-
-                <button
-                  type="button"
-                  onClick={() => removeEditLessonMaterial(index)}
-                  className="text-xs text-red-600 hover:underline"
-                >
-                  Remove
-                </button>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <input
-                  value={material.title}
-                  onChange={(e) =>
-                    updateEditLessonMaterial(index, "title", e.target.value)
-                  }
-                  placeholder="Material title"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                />
-
-                <select
-                  value={material.type}
-                  onChange={(e) =>
-                    updateEditLessonMaterial(index, "type", e.target.value)
-                  }
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                >
-                  {materialTypeOptions.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-
-                <input
-                  value={material.url}
-                  onChange={(e) =>
-                    updateEditLessonMaterial(index, "url", e.target.value)
-                  }
-                  placeholder="Material URL"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2"
                 />
 
                 <input
                   type="number"
                   value={material.order || index + 1}
-                  onChange={(e) =>
-                    updateEditLessonMaterial(index, "order", e.target.value)
-                  }
+                  onChange={(e) => onUpdate(index, "order", e.target.value)}
                   placeholder="Order"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 />
@@ -999,194 +1129,236 @@ function EditTrainingProgramContent() {
     );
   };
 
-  const renderLevelEditForm = (level: TrainingLevel) => {
+  const renderQuizEditor = ({
+    hasQuiz,
+    quizRequired,
+    quizPassScore,
+    questions,
+    onCheckboxChange,
+    onPassScoreChange,
+    onAddQuestion,
+    onRemoveQuestion,
+    onUpdateQuestion,
+    onUpdateOption,
+    editMode = false,
+  }: {
+    hasQuiz: boolean;
+    quizRequired: boolean;
+    quizPassScore: number | "";
+    questions: TrainingQuizQuestion[];
+    onCheckboxChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onPassScoreChange: (
+      e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    ) => void;
+    onAddQuestion: () => void;
+    onRemoveQuestion: (index: number) => void;
+    onUpdateQuestion: (
+      index: number,
+      field: keyof TrainingQuizQuestion,
+      value: string | number
+    ) => void;
+    onUpdateOption: (
+      questionIndex: number,
+      optionIndex: number,
+      value: string
+    ) => void;
+    editMode?: boolean;
+  }) => {
     return (
-      <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
-        <h4 className="mb-4 font-semibold text-blue-900">Edit Level</h4>
+      <div
+        className={`rounded-xl border border-blue-100 bg-blue-50/70 p-4 ${
+          editMode ? "md:col-span-2" : ""
+        }`}
+      >
+        <div className="mb-4">
+          <h4 className="font-semibold text-slate-900">Quiz Settings</h4>
+          <p className="mt-1 text-xs text-slate-500">
+            Add a short knowledge check for this lesson. Currently supports
+            single-choice questions.
+          </p>
+        </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Level Title
-            </label>
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
-              name="title"
-              value={editLevelForm.title}
-              onChange={handleEditLevelChange}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              name="hasQuiz"
+              type="checkbox"
+              checked={hasQuiz}
+              onChange={onCheckboxChange}
             />
-          </div>
+            Enable quiz for this lesson
+          </label>
+
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              name="quizRequired"
+              type="checkbox"
+              checked={quizRequired}
+              onChange={onCheckboxChange}
+              disabled={!hasQuiz}
+            />
+            Require quiz pass to complete lesson
+          </label>
 
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
-              Status
-            </label>
-            <select
-              name="status"
-              value={editLevelForm.status}
-              onChange={handleEditLevelChange}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            >
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Order
+              Passing Score
             </label>
             <input
-              name="order"
+              name="quizPassScore"
               type="number"
-              value={editLevelForm.order}
-              onChange={handleEditLevelChange}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Description
-            </label>
-            <textarea
-              name="description"
-              value={editLevelForm.description}
-              onChange={handleEditLevelChange}
-              rows={3}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              min={0}
+              max={100}
+              value={quizPassScore}
+              onChange={onPassScoreChange}
+              disabled={!hasQuiz}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100"
             />
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => handleSaveLevelEdit(level.id)}
-            disabled={updatingLevelId === level.id}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-slate-400"
-          >
-            {updatingLevelId === level.id ? "Saving..." : "Save Level"}
-          </button>
+        {hasQuiz && (
+          <div className="mt-5">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h5 className="text-sm font-semibold text-slate-900">
+                  Questions
+                </h5>
+                <p className="mt-1 text-xs text-slate-500">
+                  Each question should have at least two options.
+                </p>
+              </div>
 
-          <button
-            type="button"
-            onClick={cancelEdit}
-            className="rounded-lg bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
-  };
+              <button
+                type="button"
+                onClick={onAddQuestion}
+                className="rounded-lg bg-blue-600 px-3 py-2 text-xs text-white hover:bg-blue-700"
+              >
+                + Add Question
+              </button>
+            </div>
 
-  const renderCourseEditForm = (course: TrainingCourse) => {
-    return (
-      <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
-        <h5 className="mb-4 font-semibold text-blue-900">Edit Course</h5>
+            <div className="space-y-4">
+              {questions.map((question, questionIndex) => (
+                <div
+                  key={`quiz-question-${editMode ? "edit" : "create"}-${questionIndex}`}
+                  className="rounded-xl border border-blue-100 bg-white p-4"
+                >
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <h6 className="text-sm font-semibold text-slate-700">
+                      Question {questionIndex + 1}
+                    </h6>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Level
-            </label>
-            <select
-              name="levelId"
-              value={editCourseForm.levelId}
-              onChange={handleEditCourseChange}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            >
-              <option value="">Select level</option>
-              {levels.map((level) => (
-                <option key={level.id} value={level.id}>
-                  {level.title}
-                </option>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveQuestion(questionIndex)}
+                      className="text-xs text-red-600 hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+
+                  <div className="grid gap-3">
+                    <textarea
+                      value={question.question}
+                      onChange={(e) =>
+                        onUpdateQuestion(
+                          questionIndex,
+                          "question",
+                          e.target.value
+                        )
+                      }
+                      rows={2}
+                      placeholder="Question text"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    />
+
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {(question.options || ["", "", "", ""]).map(
+                        (option, optionIndex) => (
+                          <input
+                            key={`option-${optionIndex}`}
+                            value={option}
+                            onChange={(e) =>
+                              onUpdateOption(
+                                questionIndex,
+                                optionIndex,
+                                e.target.value
+                              )
+                            }
+                            placeholder={`Option ${String.fromCharCode(
+                              65 + optionIndex
+                            )}`}
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                          />
+                        )
+                      )}
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-sm font-medium text-slate-700">
+                          Correct Answer
+                        </label>
+                        <select
+                          value={question.correctAnswerIndex}
+                          onChange={(e) =>
+                            onUpdateQuestion(
+                              questionIndex,
+                              "correctAnswerIndex",
+                              e.target.value
+                            )
+                          }
+                          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                        >
+                          {(question.options || ["", "", "", ""]).map(
+                            (_, optionIndex) => (
+                              <option key={optionIndex} value={optionIndex}>
+                                Option {String.fromCharCode(65 + optionIndex)}
+                              </option>
+                            )
+                          )}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-sm font-medium text-slate-700">
+                          Order
+                        </label>
+                        <input
+                          type="number"
+                          value={question.order || questionIndex + 1}
+                          onChange={(e) =>
+                            onUpdateQuestion(
+                              questionIndex,
+                              "order",
+                              e.target.value
+                            )
+                          }
+                          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <textarea
+                      value={question.explanation || ""}
+                      onChange={(e) =>
+                        onUpdateQuestion(
+                          questionIndex,
+                          "explanation",
+                          e.target.value
+                        )
+                      }
+                      rows={2}
+                      placeholder="Explanation shown after answering, optional"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
               ))}
-            </select>
-            <p className="mt-1 text-xs text-slate-500">
-              Moving this course will also move all lessons under it.
-            </p>
+            </div>
           </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Course Title
-            </label>
-            <input
-              name="title"
-              value={editCourseForm.title}
-              onChange={handleEditCourseChange}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Status
-            </label>
-            <select
-              name="status"
-              value={editCourseForm.status}
-              onChange={handleEditCourseChange}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            >
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Order
-            </label>
-            <input
-              name="order"
-              type="number"
-              value={editCourseForm.order}
-              onChange={handleEditCourseChange}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Description
-            </label>
-            <textarea
-              name="description"
-              value={editCourseForm.description}
-              onChange={handleEditCourseChange}
-              rows={3}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => handleSaveCourseEdit(course.id)}
-            disabled={updatingCourseId === course.id}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-slate-400"
-          >
-            {updatingCourseId === course.id ? "Saving..." : "Save Course"}
-          </button>
-
-          <button
-            type="button"
-            onClick={cancelEdit}
-            className="rounded-lg bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
-          >
-            Cancel
-          </button>
-        </div>
+        )}
       </div>
     );
   };
@@ -1215,7 +1387,7 @@ function EditTrainingProgramContent() {
               ))}
             </select>
             <p className="mt-1 text-xs text-slate-500">
-              Moving this lesson will also update its level automatically.
+              Moving this lesson will also update its section automatically.
             </p>
           </div>
 
@@ -1318,7 +1490,27 @@ function EditTrainingProgramContent() {
             />
           </div>
 
-          {renderEditMaterialsEditor()}
+          {renderMaterialsEditor({
+            materials: editLessonForm.materials,
+            onAdd: addEditLessonMaterial,
+            onRemove: removeEditLessonMaterial,
+            onUpdate: updateEditLessonMaterial,
+            editMode: true,
+          })}
+
+          {renderQuizEditor({
+            hasQuiz: editLessonForm.hasQuiz,
+            quizRequired: editLessonForm.quizRequired,
+            quizPassScore: editLessonForm.quizPassScore,
+            questions: editLessonForm.quizQuestions,
+            onCheckboxChange: handleEditLessonCheckboxChange,
+            onPassScoreChange: handleEditLessonChange,
+            onAddQuestion: addEditLessonQuizQuestion,
+            onRemoveQuestion: removeEditLessonQuizQuestion,
+            onUpdateQuestion: updateEditLessonQuizQuestion,
+            onUpdateOption: updateEditLessonQuizOption,
+            editMode: true,
+          })}
 
           <div className="md:col-span-2 grid gap-3 md:grid-cols-2">
             <label className="flex items-center gap-2 text-sm text-slate-700">
@@ -1426,7 +1618,6 @@ function EditTrainingProgramContent() {
                 name="title"
                 value={programForm.title}
                 onChange={handleProgramChange}
-                required
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
               />
             </div>
@@ -1497,298 +1688,259 @@ function EditTrainingProgramContent() {
           </button>
         </form>
 
-        <div className="grid gap-8 xl:grid-cols-3">
-          <form
-            onSubmit={handleCreateLevel}
-            className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-          >
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">
-                Add Level
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Create a learning level under this program.
-              </p>
-            </div>
+        <form
+          onSubmit={handleCreateLevel}
+          className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+        >
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Add Section
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Sections are optional and can be used like levels, phases, or
+              chapters.
+            </p>
+          </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Level Title
-              </label>
-              <input
-                name="title"
-                value={levelForm.title}
-                onChange={handleLevelChange}
-                placeholder="Level 1: Basic"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            <input
+              name="title"
+              value={levelForm.title}
+              onChange={handleLevelChange}
+              placeholder="Section title"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Description
-              </label>
-              <textarea
-                name="description"
-                value={levelForm.description}
-                onChange={handleLevelChange}
-                rows={3}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Status
-                </label>
-                <select
-                  name="status"
-                  value={levelForm.status}
-                  onChange={handleLevelChange}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                >
-                  {statusOptions.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Order
-                </label>
-                <input
-                  name="order"
-                  type="number"
-                  value={levelForm.order}
-                  onChange={handleLevelChange}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={savingLevel}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-slate-400"
+            <select
+              name="status"
+              value={levelForm.status}
+              onChange={handleLevelChange}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
             >
-              {savingLevel ? "Adding..." : "Add Level"}
-            </button>
-          </form>
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
 
-          <form
-            onSubmit={handleCreateCourse}
-            className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+            <input
+              name="order"
+              type="number"
+              value={levelForm.order}
+              onChange={handleLevelChange}
+              placeholder="Order"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+
+            <textarea
+              name="description"
+              value={levelForm.description}
+              onChange={handleLevelChange}
+              placeholder="Description"
+              rows={3}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={savingLevel}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-slate-400"
           >
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">
-                Add Course
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Add a course under a selected level.
-              </p>
-            </div>
+            {savingLevel ? "Adding..." : "Add Section"}
+          </button>
+        </form>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Level
-              </label>
-              <select
-                name="levelId"
-                value={courseForm.levelId}
-                onChange={handleCourseChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              >
-                <option value="">Select level</option>
-                {levels.map((level) => (
-                  <option key={level.id} value={level.id}>
-                    {level.title}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <form
+          onSubmit={handleCreateCourse}
+          className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+        >
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Add Course
+            </h2>
+          </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Course Title
-              </label>
-              <input
-                name="title"
-                value={courseForm.title}
-                onChange={handleCourseChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Description
-              </label>
-              <textarea
-                name="description"
-                value={courseForm.description}
-                onChange={handleCourseChange}
-                rows={3}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Status
-                </label>
-                <select
-                  name="status"
-                  value={courseForm.status}
-                  onChange={handleCourseChange}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                >
-                  {statusOptions.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Order
-                </label>
-                <input
-                  name="order"
-                  type="number"
-                  value={courseForm.order}
-                  onChange={handleCourseChange}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={savingCourse}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-slate-400"
+          <div className="grid gap-6 md:grid-cols-2">
+            <select
+              name="levelId"
+              value={courseForm.levelId}
+              onChange={handleCourseChange}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
             >
-              {savingCourse ? "Adding..." : "Add Course"}
-            </button>
-          </form>
+              <option value="">No section</option>
+              {levels.map((level) => (
+                <option key={level.id} value={level.id}>
+                  {level.title}
+                </option>
+              ))}
+            </select>
 
-          <form
-            onSubmit={handleCreateLesson}
-            className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+            <input
+              name="title"
+              value={courseForm.title}
+              onChange={handleCourseChange}
+              placeholder="Course title"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+
+            <select
+              name="status"
+              value={courseForm.status}
+              onChange={handleCourseChange}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            >
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+
+            <input
+              name="order"
+              type="number"
+              value={courseForm.order}
+              onChange={handleCourseChange}
+              placeholder="Order"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+
+            <textarea
+              name="description"
+              value={courseForm.description}
+              onChange={handleCourseChange}
+              placeholder="Description"
+              rows={3}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={savingCourse}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-slate-400"
           >
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">
-                Add Lesson
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Add a lesson under a selected course.
-              </p>
-            </div>
+            {savingCourse ? "Adding..." : "Add Course"}
+          </button>
+        </form>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Course
-              </label>
-              <select
-                name="courseId"
-                value={lessonForm.courseId}
-                onChange={handleLessonChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              >
-                <option value="">Select course</option>
-                {courses.map((course) => (
-                  <option key={course.id} value={course.id}>
-                    {course.title}
-                  </option>
-                ))}
-              </select>
+        <form
+          onSubmit={handleCreateLesson}
+          className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+        >
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Add Lesson
+            </h2>
+          </div>
 
-              {selectedCourse && (
-                <p className="mt-1 text-xs text-slate-500">
-                  Level ID: {selectedCourse.levelId || "unassigned"}
-                </p>
-              )}
-            </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            <select
+              name="courseId"
+              value={lessonForm.courseId}
+              onChange={handleLessonChange}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            >
+              <option value="">Select course</option>
+              {courses.map((course) => (
+                <option key={course.id} value={course.id}>
+                  {course.title}
+                </option>
+              ))}
+            </select>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Lesson Title
-              </label>
-              <input
-                name="title"
-                value={lessonForm.title}
-                onChange={handleLessonChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
+            <input
+              name="title"
+              value={lessonForm.title}
+              onChange={handleLessonChange}
+              placeholder="Lesson title"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Description
-              </label>
-              <textarea
-                name="description"
-                value={lessonForm.description}
-                onChange={handleLessonChange}
-                rows={3}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
+            <select
+              name="videoType"
+              value={lessonForm.videoType}
+              onChange={handleLessonChange}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            >
+              <option value="youtube">YouTube</option>
+              <option value="google-drive">Google Drive</option>
+              <option value="vimeo">Vimeo</option>
+              <option value="external">External URL</option>
+            </select>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Video Type
-                </label>
-                <select
-                  name="videoType"
-                  value={lessonForm.videoType}
-                  onChange={handleLessonChange}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                >
-                  <option value="youtube">YouTube</option>
-                  <option value="google-drive">Google Drive</option>
-                  <option value="vimeo">Vimeo</option>
-                  <option value="external">External URL</option>
-                </select>
-              </div>
+            <input
+              name="duration"
+              value={lessonForm.duration}
+              onChange={handleLessonChange}
+              placeholder="10 min"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Duration
-                </label>
-                <input
-                  name="duration"
-                  value={lessonForm.duration}
-                  onChange={handleLessonChange}
-                  placeholder="10 min"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                />
-              </div>
-            </div>
+            <input
+              name="videoUrl"
+              value={lessonForm.videoUrl}
+              onChange={handleLessonChange}
+              placeholder="Video URL"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2"
+            />
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Video URL
-              </label>
-              <input
-                name="videoUrl"
-                value={lessonForm.videoUrl}
-                onChange={handleLessonChange}
-                placeholder="https://..."
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
+            <select
+              name="status"
+              value={lessonForm.status}
+              onChange={handleLessonChange}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            >
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
 
-            {renderCreateMaterialsEditor()}
+            <input
+              name="order"
+              type="number"
+              value={lessonForm.order}
+              onChange={handleLessonChange}
+              placeholder="Order"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
 
-            <div className="grid gap-3">
+            <textarea
+              name="description"
+              value={lessonForm.description}
+              onChange={handleLessonChange}
+              placeholder="Description"
+              rows={3}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2"
+            />
+
+            {renderMaterialsEditor({
+              materials: lessonForm.materials,
+              onAdd: addLessonMaterial,
+              onRemove: removeLessonMaterial,
+              onUpdate: updateLessonMaterial,
+              editMode: true,
+            })}
+
+            {renderQuizEditor({
+              hasQuiz: lessonForm.hasQuiz,
+              quizRequired: lessonForm.quizRequired,
+              quizPassScore: lessonForm.quizPassScore,
+              questions: lessonForm.quizQuestions,
+              onCheckboxChange: handleLessonCheckboxChange,
+              onPassScoreChange: handleLessonChange,
+              onAddQuestion: addLessonQuizQuestion,
+              onRemoveQuestion: removeLessonQuizQuestion,
+              onUpdateQuestion: updateLessonQuizQuestion,
+              onUpdateOption: updateLessonQuizOption,
+              editMode: true,
+            })}
+
+            <div className="md:col-span-2 grid gap-3 md:grid-cols-2">
               <label className="flex items-center gap-2 text-sm text-slate-700">
                 <input
                   name="allowComments"
@@ -1809,219 +1961,289 @@ function EditTrainingProgramContent() {
                 Require completion
               </label>
             </div>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Status
-                </label>
-                <select
-                  name="status"
-                  value={lessonForm.status}
-                  onChange={handleLessonChange}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                >
-                  {statusOptions.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Order
-                </label>
-                <input
-                  name="order"
-                  type="number"
-                  value={lessonForm.order}
-                  onChange={handleLessonChange}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={savingLesson}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-slate-400"
-            >
-              {savingLesson ? "Adding..." : "Add Lesson"}
-            </button>
-          </form>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Program Structure
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Review and manage the learning path by level, course, and lesson.
-            </p>
           </div>
 
-          <div className="space-y-6">
+          <button
+            type="submit"
+            disabled={savingLesson}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-slate-400"
+          >
+            {savingLesson ? "Adding..." : "Add Lesson"}
+          </button>
+        </form>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Current Structure
+          </h2>
+
+          <div className="mt-6 space-y-5">
             {levels.map((level) => {
               const levelCourses = coursesByLevel.get(level.id) || [];
 
               return (
                 <div
                   key={level.id}
-                  className="rounded-2xl border border-slate-200 p-5"
+                  className="rounded-xl border border-slate-200 bg-slate-50 p-5"
                 >
-                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <h3 className="text-lg font-semibold text-slate-900">
-                          Level {level.order || 0}: {level.title}
-                        </h3>
-                        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
-                          {level.status}
-                        </span>
+                      <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                        Section {level.order || 0} · {level.status}
                       </div>
-
-                      <p className="mt-2 text-sm text-slate-500">
-                        {level.description || "No description."}
-                      </p>
+                      <h3 className="mt-1 text-lg font-semibold text-slate-900">
+                        {level.title}
+                      </h3>
+                      {level.description && (
+                        <p className="mt-1 text-sm text-slate-500">
+                          {level.description}
+                        </p>
+                      )}
                     </div>
 
-                    <div className="flex shrink-0 gap-2">
+                    <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => startEditLevel(level)}
-                        className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100"
+                        className="rounded-lg bg-white px-3 py-2 text-xs text-blue-700 hover:bg-blue-50"
                       >
                         Edit
                       </button>
-
                       <button
                         type="button"
                         onClick={() => handleDeleteLevel(level)}
-                        className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 hover:bg-red-100"
+                        className="rounded-lg bg-white px-3 py-2 text-xs text-red-600 hover:bg-red-50"
                       >
                         Delete
                       </button>
                     </div>
                   </div>
 
-                  {editingLevelId === level.id && renderLevelEditForm(level)}
+                  {editingLevelId === level.id && (
+                    <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
+                      <h5 className="mb-4 font-semibold text-blue-900">
+                        Edit Section
+                      </h5>
 
-                  <div className="mt-5 space-y-4">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <input
+                          name="title"
+                          value={editLevelForm.title}
+                          onChange={handleEditLevelChange}
+                          placeholder="Section title"
+                          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                        />
+
+                        <select
+                          name="status"
+                          value={editLevelForm.status}
+                          onChange={handleEditLevelChange}
+                          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                        >
+                          {statusOptions.map((status) => (
+                            <option key={status} value={status}>
+                              {status}
+                            </option>
+                          ))}
+                        </select>
+
+                        <input
+                          name="order"
+                          type="number"
+                          value={editLevelForm.order}
+                          onChange={handleEditLevelChange}
+                          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                        />
+
+                        <textarea
+                          name="description"
+                          value={editLevelForm.description}
+                          onChange={handleEditLevelChange}
+                          rows={3}
+                          className="rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2"
+                        />
+                      </div>
+
+                      <div className="mt-4 flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleSaveLevelEdit(level.id)}
+                          disabled={updatingLevelId === level.id}
+                          className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-slate-400"
+                        >
+                          {updatingLevelId === level.id
+                            ? "Saving..."
+                            : "Save Section"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={cancelEdit}
+                          className="rounded-lg bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-4 space-y-4">
                     {levelCourses.map((course) => {
                       const courseLessons = lessonsByCourse.get(course.id) || [];
 
                       return (
                         <div
                           key={course.id}
-                          className="rounded-xl border border-slate-100 bg-slate-50 p-4"
+                          className="rounded-xl border border-slate-200 bg-white p-4"
                         >
-                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
-                              <div className="flex flex-wrap items-center gap-3">
-                                <h4 className="font-semibold text-slate-800">
-                                  Course {course.order || 0}: {course.title}
-                                </h4>
-                                <span className="rounded-full bg-white px-2 py-1 text-xs text-slate-500">
-                                  {course.status}
-                                </span>
+                              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Course {course.order || 0} · {course.status}
                               </div>
-
-                              <p className="mt-1 text-sm text-slate-500">
-                                {course.description || "No description."}
-                              </p>
+                              <h4 className="mt-1 font-semibold text-slate-900">
+                                {course.title}
+                              </h4>
+                              {course.description && (
+                                <p className="mt-1 text-sm text-slate-500">
+                                  {course.description}
+                                </p>
+                              )}
                             </div>
 
-                            <div className="flex shrink-0 gap-2">
+                            <div className="flex gap-2">
                               <button
                                 type="button"
                                 onClick={() => startEditCourse(course)}
-                                className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100"
+                                className="rounded-lg bg-slate-100 px-3 py-2 text-xs text-blue-700 hover:bg-blue-50"
                               >
                                 Edit
                               </button>
-
                               <button
                                 type="button"
                                 onClick={() => handleDeleteCourse(course)}
-                                className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 hover:bg-red-100"
+                                className="rounded-lg bg-slate-100 px-3 py-2 text-xs text-red-600 hover:bg-red-50"
                               >
                                 Delete
                               </button>
                             </div>
                           </div>
 
-                          {editingCourseId === course.id &&
-                            renderCourseEditForm(course)}
+                          {editingCourseId === course.id && (
+                            <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
+                              <h5 className="mb-4 font-semibold text-blue-900">
+                                Edit Course
+                              </h5>
+
+                              <div className="grid gap-4 md:grid-cols-2">
+                                <select
+                                  name="levelId"
+                                  value={editCourseForm.levelId}
+                                  onChange={handleEditCourseChange}
+                                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                >
+                                  <option value="">No section</option>
+                                  {levels.map((level) => (
+                                    <option key={level.id} value={level.id}>
+                                      {level.title}
+                                    </option>
+                                  ))}
+                                </select>
+
+                                <input
+                                  name="title"
+                                  value={editCourseForm.title}
+                                  onChange={handleEditCourseChange}
+                                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                />
+
+                                <select
+                                  name="status"
+                                  value={editCourseForm.status}
+                                  onChange={handleEditCourseChange}
+                                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                >
+                                  {statusOptions.map((status) => (
+                                    <option key={status} value={status}>
+                                      {status}
+                                    </option>
+                                  ))}
+                                </select>
+
+                                <input
+                                  name="order"
+                                  type="number"
+                                  value={editCourseForm.order}
+                                  onChange={handleEditCourseChange}
+                                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                />
+
+                                <textarea
+                                  name="description"
+                                  value={editCourseForm.description}
+                                  onChange={handleEditCourseChange}
+                                  rows={3}
+                                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2"
+                                />
+                              </div>
+
+                              <div className="mt-4 flex gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveCourseEdit(course.id)}
+                                  disabled={updatingCourseId === course.id}
+                                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-slate-400"
+                                >
+                                  {updatingCourseId === course.id
+                                    ? "Saving..."
+                                    : "Save Course"}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={cancelEdit}
+                                  className="rounded-lg bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          )}
 
                           <div className="mt-4 space-y-3">
                             {courseLessons.map((lesson) => (
                               <div
                                 key={lesson.id}
-                                className="rounded-lg bg-white p-4"
+                                className="rounded-xl border border-slate-100 bg-slate-50 p-4"
                               >
-                                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
                                   <div>
-                                    <div className="flex flex-wrap items-center gap-3">
-                                      <h5 className="font-medium text-slate-800">
-                                        Lesson {lesson.order || 0}:{" "}
-                                        {lesson.title}
-                                      </h5>
-                                      <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">
-                                        {lesson.status}
-                                      </span>
-                                      {lesson.duration && (
-                                        <span className="text-xs text-slate-500">
-                                          {lesson.duration}
-                                        </span>
-                                      )}
+                                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                      Lesson {lesson.order || 0} · {lesson.status}
+                                      {lesson.hasQuiz ? " · Quiz" : ""}
                                     </div>
-
-                                    <p className="mt-1 text-sm text-slate-500">
-                                      {lesson.description || "No description."}
-                                    </p>
-
-                                    {lesson.videoUrl && (
-                                      <p className="mt-1 break-all text-xs text-blue-700">
-                                        {lesson.videoUrl}
+                                    <h5 className="mt-1 font-semibold text-slate-900">
+                                      {lesson.title}
+                                    </h5>
+                                    {lesson.description && (
+                                      <p className="mt-1 text-sm text-slate-500">
+                                        {lesson.description}
                                       </p>
                                     )}
-
-                                    {lesson.materials &&
-                                      lesson.materials.length > 0 && (
-                                        <div className="mt-2 flex flex-wrap gap-2">
-                                          {lesson.materials.map(
-                                            (material, index) => (
-                                              <a
-                                                key={`${lesson.id}-${index}`}
-                                                href={material.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="rounded-lg bg-slate-100 px-3 py-1 text-xs text-slate-700 hover:bg-slate-200"
-                                              >
-                                                {material.title}
-                                              </a>
-                                            )
-                                          )}
-                                        </div>
-                                      )}
                                   </div>
 
-                                  <div className="flex shrink-0 gap-2">
+                                  <div className="flex gap-2">
                                     <button
                                       type="button"
                                       onClick={() => startEditLesson(lesson)}
-                                      className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100"
+                                      className="rounded-lg bg-white px-3 py-2 text-xs text-blue-700 hover:bg-blue-50"
                                     >
                                       Edit
                                     </button>
-
                                     <button
                                       type="button"
                                       onClick={() => handleDeleteLesson(lesson)}
-                                      className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 hover:bg-red-100"
+                                      className="rounded-lg bg-white px-3 py-2 text-xs text-red-600 hover:bg-red-50"
                                     >
                                       Delete
                                     </button>
@@ -2034,8 +2256,8 @@ function EditTrainingProgramContent() {
                             ))}
 
                             {courseLessons.length === 0 && (
-                              <div className="rounded-lg border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">
-                                No lessons under this course yet.
+                              <div className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500">
+                                No lessons in this course.
                               </div>
                             )}
                           </div>
@@ -2044,8 +2266,8 @@ function EditTrainingProgramContent() {
                     })}
 
                     {levelCourses.length === 0 && (
-                      <div className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">
-                        No courses under this level yet.
+                      <div className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500">
+                        No courses in this section.
                       </div>
                     )}
                   </div>
@@ -2053,39 +2275,184 @@ function EditTrainingProgramContent() {
               );
             })}
 
-            {levels.length === 0 && (
-              <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-                No levels yet. Add your first level above.
-              </div>
-            )}
-
             {(coursesByLevel.get("__unassigned__") || []).length > 0 && (
-              <div className="rounded-2xl border border-orange-200 bg-orange-50 p-5">
-                <h3 className="font-semibold text-orange-800">
-                  Unassigned Courses
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                <h3 className="text-lg font-semibold text-slate-900">
+                  No Section
                 </h3>
-                <p className="mt-1 text-sm text-orange-700">
-                  These courses were created before the Level structure was
-                  added. Recreate them under a level or update them in the next
-                  editor version.
-                </p>
 
-                <div className="mt-4 space-y-3">
-                  {(coursesByLevel.get("__unassigned__") || []).map(
-                    (course) => (
+                <div className="mt-4 space-y-4">
+                  {(coursesByLevel.get("__unassigned__") || []).map((course) => {
+                    const courseLessons = lessonsByCourse.get(course.id) || [];
+
+                    return (
                       <div
                         key={course.id}
-                        className="rounded-xl bg-white p-4 text-sm text-slate-700"
+                        className="rounded-xl border border-slate-200 bg-white p-4"
                       >
-                        {course.title}
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Course {course.order || 0} · {course.status}
+                            </div>
+                            <h4 className="mt-1 font-semibold text-slate-900">
+                              {course.title}
+                            </h4>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => startEditCourse(course)}
+                              className="rounded-lg bg-slate-100 px-3 py-2 text-xs text-blue-700 hover:bg-blue-50"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCourse(course)}
+                              className="rounded-lg bg-slate-100 px-3 py-2 text-xs text-red-600 hover:bg-red-50"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+
+                        {editingCourseId === course.id && (
+                          <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
+                            <h5 className="mb-4 font-semibold text-blue-900">
+                              Edit Course
+                            </h5>
+
+                            <div className="grid gap-4 md:grid-cols-2">
+                              <select
+                                name="levelId"
+                                value={editCourseForm.levelId}
+                                onChange={handleEditCourseChange}
+                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                              >
+                                <option value="">No section</option>
+                                {levels.map((level) => (
+                                  <option key={level.id} value={level.id}>
+                                    {level.title}
+                                  </option>
+                                ))}
+                              </select>
+
+                              <input
+                                name="title"
+                                value={editCourseForm.title}
+                                onChange={handleEditCourseChange}
+                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                              />
+
+                              <select
+                                name="status"
+                                value={editCourseForm.status}
+                                onChange={handleEditCourseChange}
+                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                              >
+                                {statusOptions.map((status) => (
+                                  <option key={status} value={status}>
+                                    {status}
+                                  </option>
+                                ))}
+                              </select>
+
+                              <input
+                                name="order"
+                                type="number"
+                                value={editCourseForm.order}
+                                onChange={handleEditCourseChange}
+                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                              />
+
+                              <textarea
+                                name="description"
+                                value={editCourseForm.description}
+                                onChange={handleEditCourseChange}
+                                rows={3}
+                                className="rounded-lg border border-slate-300 px-3 py-2 text-sm md:col-span-2"
+                              />
+                            </div>
+
+                            <div className="mt-4 flex gap-3">
+                              <button
+                                type="button"
+                                onClick={() => handleSaveCourseEdit(course.id)}
+                                disabled={updatingCourseId === course.id}
+                                className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-slate-400"
+                              >
+                                {updatingCourseId === course.id
+                                  ? "Saving..."
+                                  : "Save Course"}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={cancelEdit}
+                                className="rounded-lg bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="mt-4 space-y-3">
+                          {courseLessons.map((lesson) => (
+                            <div
+                              key={lesson.id}
+                              className="rounded-xl border border-slate-100 bg-slate-50 p-4"
+                            >
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    Lesson {lesson.order || 0} · {lesson.status}
+                                    {lesson.hasQuiz ? " · Quiz" : ""}
+                                  </div>
+                                  <h5 className="mt-1 font-semibold text-slate-900">
+                                    {lesson.title}
+                                  </h5>
+                                </div>
+
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => startEditLesson(lesson)}
+                                    className="rounded-lg bg-white px-3 py-2 text-xs text-blue-700 hover:bg-blue-50"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteLesson(lesson)}
+                                    className="rounded-lg bg-white px-3 py-2 text-xs text-red-600 hover:bg-red-50"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+
+                              {editingLessonId === lesson.id &&
+                                renderLessonEditForm(lesson)}
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    )
-                  )}
+                    );
+                  })}
                 </div>
               </div>
             )}
+
+            {levels.length === 0 && courses.length === 0 && (
+              <div className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+                No sections, courses, or lessons yet.
+              </div>
+            )}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );
