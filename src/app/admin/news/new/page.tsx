@@ -1,158 +1,216 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import AdminGuard from "@/app/components/AdminGuard";
-import { getAllNews, NewsItem } from "@/lib/news";
+import { useRouter } from "next/navigation";
 import { Timestamp } from "firebase/firestore";
+import AdminGuard from "@/app/components/AdminGuard";
+import { createNews, NewsStatus } from "@/lib/news";
 
-const formatDate = (value?: Timestamp | null) => {
-  if (!value) return "";
-
-  try {
-    return value.toDate().toLocaleString();
-  } catch {
-    return "";
-  }
+const toDateTimeLocalValue = (date: Date) => {
+  const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 };
 
-const getStatusBadgeClass = (status: string) => {
-  switch (status) {
-    case "published":
-      return "bg-green-100 text-green-700";
-    case "draft":
-      return "bg-slate-100 text-slate-600";
-    case "archived":
-      return "bg-amber-100 text-amber-700";
-    default:
-      return "bg-slate-100 text-slate-600";
-  }
+const inputToTimestamp = (value: string) => {
+  return Timestamp.fromDate(new Date(value));
 };
 
-function AdminNewsContent() {
-  const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
-  const [loadingNews, setLoadingNews] = useState(true);
+function NewNewsContent() {
+  const router = useRouter();
 
-  useEffect(() => {
-    const fetchNews = async () => {
-      setLoadingNews(true);
+  const [title, setTitle] = useState("");
+  const [summary, setSummary] = useState("");
+  const [content, setContent] = useState("");
+  const [audience, setAudience] = useState("Internal");
+  const [status, setStatus] = useState<NewsStatus>("draft");
+  const [publishedAt, setPublishedAt] = useState(
+    toDateTimeLocalValue(new Date())
+  );
+  const [order, setOrder] = useState("1");
+  const [saving, setSaving] = useState(false);
 
-      try {
-        const data = await getAllNews();
-        setNewsItems(data);
-      } catch (error) {
-        console.error("Failed to load news:", error);
-      } finally {
-        setLoadingNews(false);
-      }
-    };
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-    fetchNews();
-  }, []);
+    const cleanTitle = title.trim();
+    const cleanSummary = summary.trim();
+    const cleanContent = content.trim();
 
-  if (loadingNews) {
-    return <div className="text-slate-500">Loading news...</div>;
-  }
+    if (!cleanTitle) {
+      alert("Title is required.");
+      return;
+    }
+
+    if (!cleanSummary) {
+      alert("Summary is required.");
+      return;
+    }
+
+    if (!cleanContent) {
+      alert("Content is required.");
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      await createNews({
+        title: cleanTitle,
+        summary: cleanSummary,
+        content: cleanContent,
+        audience: audience.trim() || "Internal",
+        status,
+        publishedAt: inputToTimestamp(publishedAt),
+        order: Number(order) || 9999,
+      });
+
+      router.push("/admin/news");
+    } catch (error) {
+      console.error("Failed to create news:", error);
+      alert("Failed to create news.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <div>
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+    <form onSubmit={handleCreate} className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            News Management
+          <Link
+            href="/admin/news"
+            className="text-sm font-medium text-blue-700 hover:underline"
+          >
+            Back to News Management
+          </Link>
+
+          <h1 className="mt-3 text-2xl font-bold text-slate-900">
+            Create News
           </h1>
           <p className="mt-2 text-slate-600">
-            Create and manage homepage announcements.
+            Create a homepage announcement.
           </p>
         </div>
+      </div>
 
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="grid gap-5">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Title
+            </label>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="PDM Training content has been updated"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Summary
+            </label>
+            <input
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              placeholder="Short summary shown on the news card."
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Content
+            </label>
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              rows={8}
+              placeholder="Full announcement content..."
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Audience
+              </label>
+              <input
+                value={audience}
+                onChange={(e) => setAudience(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Status
+              </label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as NewsStatus)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+              >
+                <option value="draft">draft</option>
+                <option value="published">published</option>
+                <option value="archived">archived</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Published At
+              </label>
+              <input
+                type="datetime-local"
+                value={publishedAt}
+                onChange={(e) => setPublishedAt(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Order
+              </label>
+              <input
+                type="number"
+                value={order}
+                onChange={(e) => setOrder(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="flex flex-wrap justify-end gap-3">
         <Link
-          href="/admin/news/new"
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          href="/admin/news"
+          className="rounded-lg bg-slate-100 px-5 py-2 text-sm text-slate-700 hover:bg-slate-200"
         >
-          Create News
+          Cancel
         </Link>
+
+        <button
+          type="submit"
+          disabled={saving}
+          className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-slate-400"
+        >
+          {saving ? "Creating..." : "Create News"}
+        </button>
       </div>
-
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-slate-600">
-            <tr>
-              <th className="px-4 py-3 font-semibold">Title</th>
-              <th className="px-4 py-3 font-semibold">Status</th>
-              <th className="px-4 py-3 font-semibold">Audience</th>
-              <th className="px-4 py-3 font-semibold">Published</th>
-              <th className="px-4 py-3 font-semibold">Order</th>
-              <th className="px-4 py-3 font-semibold">Action</th>
-            </tr>
-          </thead>
-
-          <tbody className="divide-y divide-slate-100">
-            {newsItems.map((news) => (
-              <tr key={news.id}>
-                <td className="max-w-md px-4 py-3">
-                  <div className="font-medium text-slate-900">
-                    {news.title}
-                  </div>
-                  <div className="mt-1 line-clamp-1 text-xs text-slate-500">
-                    {news.summary}
-                  </div>
-                </td>
-
-                <td className="px-4 py-3">
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(
-                      news.status
-                    )}`}
-                  >
-                    {news.status}
-                  </span>
-                </td>
-
-                <td className="px-4 py-3 text-slate-600">
-                  {news.audience || "Internal"}
-                </td>
-
-                <td className="px-4 py-3 text-slate-600">
-                  {formatDate(news.publishedAt)}
-                </td>
-
-                <td className="px-4 py-3 text-slate-600">
-                  {news.order ?? 9999}
-                </td>
-
-                <td className="px-4 py-3">
-                  <Link
-                    href={`/admin/news/${news.id}`}
-                    className="text-blue-700 hover:underline"
-                  >
-                    Edit
-                  </Link>
-                </td>
-              </tr>
-            ))}
-
-            {newsItems.length === 0 && (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="px-4 py-8 text-center text-slate-500"
-                >
-                  No news found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    </form>
   );
 }
 
-export default function AdminNewsPage() {
+export default function NewNewsPage() {
   return (
     <AdminGuard>
-      <AdminNewsContent />
+      <NewNewsContent />
     </AdminGuard>
   );
 }
