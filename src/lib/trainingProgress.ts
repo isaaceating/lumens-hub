@@ -247,20 +247,31 @@ export const resetTrainingQuizProgress = async ({
     ? (existingProgress.completedLessonIds || []).filter((id) => id !== lessonId)
     : existingProgress.completedLessonIds || [];
 
+  const existingLessonProgress = existingProgress.lessonProgress?.[lessonId];
+
+  const nextLessonProgress: TrainingLessonProgress = {
+    ...(existingLessonProgress || {}),
+    lessonId,
+    completed: removeCompletion
+      ? false
+      : existingLessonProgress?.completed === true,
+  };
+
+  if (!removeCompletion && existingLessonProgress?.completedAt) {
+    nextLessonProgress.completedAt = existingLessonProgress.completedAt;
+  } else {
+    delete nextLessonProgress.completedAt;
+  }
+
+  delete nextLessonProgress.quizScore;
+  delete nextLessonProgress.quizPassed;
+  delete nextLessonProgress.quizSubmittedAt;
+
   await upsertTrainingProgress(userId, programId, {
     completedLessonIds,
     lessonProgress: {
       ...(existingProgress.lessonProgress || {}),
-      [lessonId]: {
-        ...(existingProgress.lessonProgress?.[lessonId] || {}),
-        lessonId,
-        completed: removeCompletion
-          ? false
-          : existingProgress.lessonProgress?.[lessonId]?.completed === true,
-        quizScore: undefined,
-        quizPassed: undefined,
-        quizSubmittedAt: undefined,
-      },
+      [lessonId]: nextLessonProgress,
     },
     quizProgress: nextQuizProgress,
   });

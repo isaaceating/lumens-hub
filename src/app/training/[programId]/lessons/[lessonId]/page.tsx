@@ -40,6 +40,7 @@ import {
   mergeLocalCompletedLessonsToFirestore,
   resetTrainingQuizProgress,
   saveTrainingQuizProgress,
+  unmarkTrainingLessonComplete,
 } from "@/lib/trainingProgress";
 
 type LessonContent = {
@@ -956,6 +957,58 @@ function LessonDetailContent() {
     }
   };
 
+    const handleMarkLessonIncomplete = async () => {
+    if (!lessonId) return;
+
+    if (!completedLessonIds.includes(lessonId)) return;
+
+    const confirmed = window.confirm(
+      "Mark this lesson as incomplete? This will remove the lesson completion status and reset the quiz result for this lesson."
+    );
+
+    if (!confirmed) return;
+
+    const nextLocalIds = completedLessonIds.filter((id) => id !== lessonId);
+
+    if (!user) {
+      saveCompletedLessonIds(nextLocalIds);
+      setQuizResult(null);
+      setLocalQuizResult(programId, lessonId, null);
+      return;
+    }
+
+    try {
+      let nextIds = nextLocalIds;
+
+      if (quizResult) {
+        const resetResult = await resetTrainingQuizProgress({
+          userId: user.uid,
+          programId,
+          lessonId,
+          removeCompletion: true,
+        });
+
+        nextIds = resetResult.completedLessonIds;
+        setQuizResult(null);
+        setLocalQuizResult(programId, lessonId, null);
+      } else {
+        nextIds = await unmarkTrainingLessonComplete({
+          userId: user.uid,
+          programId,
+          lessonId,
+        });
+      }
+
+      saveCompletedLessonIds(nextIds);
+    } catch (error) {
+      console.error("Failed to mark lesson as incomplete:", error);
+
+      saveCompletedLessonIds(nextLocalIds);
+      setQuizResult(null);
+      setLocalQuizResult(programId, lessonId, null);
+    }
+  };
+
   const handleQuizResultChange = async (result: QuizResult | null) => {
     setQuizResult(result);
     setLocalQuizResult(programId, lessonId, result);
@@ -1354,9 +1407,23 @@ function LessonDetailContent() {
               Completion
             </h2>
 
-            {isLessonCompleted ? (
-              <div className="mt-3 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700">
-                This lesson is completed.
+                        {progressLoading ? (
+              <div className="mt-3 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                Loading progress...
+              </div>
+            ) : isLessonCompleted ? (
+              <div className="mt-3 space-y-3">
+                <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700">
+                  This lesson is completed.
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleMarkLessonIncomplete}
+                  className="w-full rounded-lg bg-white px-4 py-2 text-sm text-red-600 ring-1 ring-red-200 hover:bg-red-50"
+                >
+                  Mark as Incomplete
+                </button>
               </div>
             ) : quizRequired ? (
               <div className="mt-3 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-700">
