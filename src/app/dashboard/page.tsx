@@ -30,26 +30,75 @@ const getModuleHref = (module: any) => {
   return module.href || "#";
 };
 
-const formatNewsDate = (value?: Timestamp | string | Date | null) => {
-  if (!value) return "";
+const getNewsDate = (value?: Timestamp | string | Date | null) => {
+  if (!value) return null;
 
   try {
     if (value instanceof Timestamp) {
-      return value.toDate().toLocaleDateString();
+      return value.toDate();
     }
 
     if (typeof value === "object" && "toDate" in value) {
-      return (value as any).toDate().toLocaleDateString();
+      return (value as any).toDate();
     }
 
     if (typeof value === "object" && "seconds" in value) {
-      return new Date((value as any).seconds * 1000).toLocaleDateString();
+      return new Date((value as any).seconds * 1000);
     }
 
-    return new Date(value).toLocaleDateString();
+    return new Date(value);
   } catch {
+    return null;
+  }
+};
+
+const formatNewsDate = (value?: Timestamp | string | Date | null) => {
+  const date = getNewsDate(value);
+
+  if (!date || Number.isNaN(date.getTime())) {
     return "";
   }
+
+  return date.toLocaleDateString();
+};
+
+const isNewNews = (value?: Timestamp | string | Date | null) => {
+  const date = getNewsDate(value);
+
+  if (!date || Number.isNaN(date.getTime())) {
+    return false;
+  }
+
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+  return diffDays >= 0 && diffDays <= 7;
+};
+
+const renderLinkedText = (text?: string) => {
+  if (!text) return null;
+
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+
+  return parts.map((part, index) => {
+    if (urlRegex.test(part)) {
+      return (
+        <a
+          key={`${part}-${index}`}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
+        >
+          {part}
+        </a>
+      );
+    }
+
+    return <span key={`${part}-${index}`}>{part}</span>;
+  });
 };
 
 const WorkspaceIcon = () => (
@@ -250,14 +299,21 @@ export default function DashboardPage() {
 
   const visibleNewsItems = useMemo(() => {
     if (newsItems.length <= 3) {
-      return newsItems;
+      return newsItems.map((news, index) => ({
+        news,
+        position: index === activeNewsIndex ? "active" : "side",
+      }));
     }
 
+    const previousIndex =
+      activeNewsIndex === 0 ? newsItems.length - 1 : activeNewsIndex - 1;
+    const nextIndex = (activeNewsIndex + 1) % newsItems.length;
+
     return [
-      newsItems[activeNewsIndex],
-      newsItems[(activeNewsIndex + 1) % newsItems.length],
-      newsItems[(activeNewsIndex + 2) % newsItems.length],
-    ].filter(Boolean);
+      { news: newsItems[previousIndex], position: "side" },
+      { news: newsItems[activeNewsIndex], position: "active" },
+      { news: newsItems[nextIndex], position: "side" },
+    ].filter((item) => item.news);
   }, [activeNewsIndex, newsItems]);
 
   const quickAccessItems = [
@@ -837,39 +893,59 @@ export default function DashboardPage() {
                   ‹
                 </button>
 
-                <div className="grid flex-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {visibleNewsItems.map((news, index) => (
-                    <button
-                      key={`${news.id}-${index}`}
-                      type="button"
-                      onClick={() => setSelectedNews(news)}
-                      className="group relative h-[150px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
-                    >
-                      <div className="absolute inset-0 bg-blue-900/0 transition group-hover:bg-blue-900/90" />
+                <div className="grid flex-1 items-center gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {visibleNewsItems.map(({ news, position }, index) => {
+                    const active = position === "active";
 
-                      <div className="relative flex h-full flex-col transition group-hover:opacity-20">
-                        <div className="mb-3 flex h-4 items-center gap-2 text-xs text-slate-400">
-                          <span className="text-[11px]">◷</span>
-                          <span>{formatNewsDate(news.publishedAt)}</span>
+                    return (
+                      <button
+                        key={`${news.id}-${index}`}
+                        type="button"
+                        onClick={() => setSelectedNews(news)}
+                        className={`group relative h-[154px] overflow-hidden rounded-2xl border bg-white p-4 text-left transition ${
+                          active
+                            ? "border-blue-500 shadow-md ring-4 ring-blue-50 xl:scale-[1.03]"
+                            : "border-slate-200 shadow-sm hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
+                        }`}
+                      >
+                        <div
+                          className={`absolute inset-x-0 top-0 h-1 ${
+                            active ? "bg-blue-600" : "bg-transparent"
+                          }`}
+                        />
+
+                        <div className="absolute inset-0 bg-blue-900/0 transition group-hover:bg-blue-900/90" />
+
+                        <div className="relative flex h-full flex-col transition group-hover:opacity-20">
+                          <div className="mb-3 flex h-5 items-center gap-2 text-xs text-slate-400">
+                            <span className="text-[11px]">◷</span>
+                            <span>{formatNewsDate(news.publishedAt)}</span>
+
+                            {isNewNews(news.publishedAt) && (
+                              <span className="rounded-full border border-yellow-200 bg-yellow-100 px-2 py-0.5 text-[10px] font-bold tracking-wide text-yellow-700">
+                                NEW
+                              </span>
+                            )}
+                          </div>
+
+                          <h3 className="line-clamp-2 min-h-[48px] text-base font-bold leading-6 text-slate-900">
+                            {news.title}
+                          </h3>
+
+                          <p className="mt-2 line-clamp-2 min-h-[48px] text-sm leading-6 text-slate-500">
+                            {news.summary}
+                          </p>
                         </div>
 
-                        <h3 className="line-clamp-2 min-h-[48px] text-base font-bold leading-6 text-slate-900">
-                          {news.title}
-                        </h3>
-
-                        <p className="mt-2 line-clamp-2 min-h-[48px] text-sm leading-6 text-slate-500">
-                          {news.summary}
-                        </p>
-                      </div>
-
-                      <div className="absolute inset-0 hidden items-center justify-center text-white group-hover:flex">
-                        <div className="flex items-center gap-2 text-base font-semibold">
-                          <span>◎</span>
-                          <span>View Details</span>
+                        <div className="absolute inset-0 hidden items-center justify-center text-white group-hover:flex">
+                          <div className="flex items-center gap-2 text-base font-semibold">
+                            <span>◎</span>
+                            <span>View Details</span>
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <button
@@ -882,7 +958,7 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              <div className="mt-5 flex items-center justify-center gap-2">
+              <div className="mt-6 flex items-center justify-center gap-2">
                 {newsItems.map((news, index) => (
                   <button
                     key={news.id}
@@ -1013,8 +1089,14 @@ export default function DashboardPage() {
                   <div className="font-semibold text-slate-700">
                     Published
                   </div>
-                  <div className="text-slate-700">
-                    {formatNewsDate(selectedNews.publishedAt)}
+                  <div className="flex flex-wrap items-center gap-2 text-slate-700">
+                    <span>{formatNewsDate(selectedNews.publishedAt)}</span>
+
+                    {isNewNews(selectedNews.publishedAt) && (
+                      <span className="rounded-full border border-yellow-200 bg-yellow-100 px-2 py-0.5 text-xs font-bold tracking-wide text-yellow-700">
+                        NEW
+                      </span>
+                    )}
                   </div>
 
                   <div className="font-semibold text-slate-700">Audience</div>
@@ -1022,6 +1104,11 @@ export default function DashboardPage() {
                     <span className="rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700">
                       {selectedNews.audience || "Internal"}
                     </span>
+                  </div>
+
+                  <div className="font-semibold text-slate-700">Summary</div>
+                  <div className="whitespace-pre-wrap leading-7 text-slate-700">
+                    {renderLinkedText(selectedNews.summary)}
                   </div>
                 </div>
               </div>
@@ -1033,7 +1120,7 @@ export default function DashboardPage() {
                 <div className="mt-3 h-1 w-full rounded-full bg-yellow-300" />
 
                 <p className="mt-5 whitespace-pre-wrap text-base leading-8 text-slate-700">
-                  {selectedNews.content}
+                  {renderLinkedText(selectedNews.content)}
                 </p>
               </div>
             </div>
