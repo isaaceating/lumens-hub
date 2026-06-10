@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+
+import EmbeddedModuleFrame from "@/components/EmbeddedModuleFrame";
 import { signInWithGoogle } from "@/lib/auth";
 import { getModuleById } from "@/lib/modules";
 import { useUserProfile } from "@/lib/useUserProfile";
@@ -20,16 +22,29 @@ export default function ModuleRendererPage() {
     const fetchModule = async () => {
       if (!moduleId) return;
 
-      const data = await getModuleById(moduleId);
-      setModule(data);
-      setLoading(false);
+      try {
+        const data = await getModuleById(moduleId);
+        setModule(data);
+      } catch (error) {
+        console.error("Failed to load module:", error);
+        setModule(null);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchModule();
   }, [moduleId]);
 
   if (loading || profileLoading) {
-    return <div className="text-slate-500">Loading resource...</div>;
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
+          <div className="text-sm text-slate-500">Loading resource...</div>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {
@@ -148,12 +163,11 @@ export default function ModuleRendererPage() {
     }
 
     return (
-      <div className="-m-8 h-[calc(100vh-64px)]">
-        <iframe
+      <div className="-m-8 h-[calc(100vh-64px)] bg-white">
+        <EmbeddedModuleFrame
+          title={module.name || "Embedded Module"}
           src={module.embedUrl}
-          title={module.name}
-          className="h-full w-full border-0 bg-white"
-          allowFullScreen
+          height="calc(100vh - 64px)"
         />
       </div>
     );
