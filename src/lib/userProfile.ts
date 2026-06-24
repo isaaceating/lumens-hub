@@ -15,6 +15,11 @@ export const createOrUpdateUserProfile = async (user: any) => {
       photo: user.photoURL || "",
       role: "user",
       region: "APAC",
+      department: "",
+      knowledgeCenterAuditEnabled: false,
+      auditSettings: {
+        knowledgeCenter: false,
+      },
       enabledModules: ["dashboard", "training"],
       modulePermissions: {
         dashboard: "view",
@@ -32,7 +37,7 @@ export const createOrUpdateUserProfile = async (user: any) => {
         photo: user.photoURL || "",
         updatedAt: new Date().toISOString(),
       },
-      { merge: true }
+      { merge: true },
     );
   }
 };

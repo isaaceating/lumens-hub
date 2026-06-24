@@ -1,9 +1,15 @@
-import { collection, getDocs, doc, updateDoc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  doc,
+  updateDoc,
+  getDoc,
+} from "firebase/firestore";
 import { db } from "./firebase";
 
 export const updateUserModules = async (
   uid: string,
-  enabledModules: string[]
+  enabledModules: string[],
 ) => {
   const userRef = doc(db, "users", uid);
 
@@ -47,9 +53,15 @@ export const updateUserProfile = async (
   data: {
     role?: string;
     region?: string;
+    department?: string;
     enabledModules?: string[];
     enabledDashboardSections?: string[];
-  }
+    knowledgeCenterAuditEnabled?: boolean;
+    auditSettings?: {
+      knowledgeCenter?: boolean;
+      [key: string]: boolean | undefined;
+    };
+  },
 ) => {
   const userRef = doc(db, "users", uid);
 

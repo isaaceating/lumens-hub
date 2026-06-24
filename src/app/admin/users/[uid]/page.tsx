@@ -50,16 +50,22 @@ const dashboardSectionOptions: {
   },
 ];
 
-const defaultDashboardSections = dashboardSectionOptions.map((item) => item.key);
+const defaultDashboardSections = dashboardSectionOptions.map(
+  (item) => item.key,
+);
 
 function UserDetailContent() {
   const params = useParams();
   const uid = params.uid as string;
 
   const [user, setUser] = useState<any>(null);
+
   const [role, setRole] = useState("user");
   const [region, setRegion] = useState("APAC");
+  const [knowledgeCenterAuditEnabled, setKnowledgeCenterAuditEnabled] =
+    useState(false);
   const [enabledModules, setEnabledModules] = useState<string[]>([]);
+
   const [enabledDashboardSections, setEnabledDashboardSections] = useState<
     string[]
   >(defaultDashboardSections);
@@ -71,13 +77,13 @@ function UserDetailContent() {
 
   const workspaceModules = useMemo(() => {
     return moduleOptions.filter(
-      (module) => module.type === "feature" && module.section === "workspace"
+      (module) => module.type === "feature" && module.section === "workspace",
     );
   }, [moduleOptions]);
 
   const resourceModules = useMemo(() => {
     return moduleOptions.filter(
-      (module) => module.type === "feature" && module.section !== "workspace"
+      (module) => module.type === "feature" && module.section !== "workspace",
     );
   }, [moduleOptions]);
 
@@ -94,13 +100,17 @@ function UserDetailContent() {
           setUser(data);
           setRole(data.role || "user");
           setRegion(data.region || "APAC");
+          setKnowledgeCenterAuditEnabled(
+            data.knowledgeCenterAuditEnabled === true ||
+              data.auditSettings?.knowledgeCenter === true,
+          );
           setEnabledModules(
-            Array.isArray(data.enabledModules) ? data.enabledModules : []
+            Array.isArray(data.enabledModules) ? data.enabledModules : [],
           );
           setEnabledDashboardSections(
             Array.isArray(data.enabledDashboardSections)
               ? data.enabledDashboardSections
-              : defaultDashboardSections
+              : defaultDashboardSections,
           );
         }
       } catch (error) {
@@ -124,12 +134,10 @@ function UserDetailContent() {
 
         const unique = combined.filter(
           (module, index, self) =>
-            index === self.findIndex((item) => item.id === module.id)
+            index === self.findIndex((item) => item.id === module.id),
         );
 
-        const sorted = unique.sort(
-          (a, b) => (a.order || 0) - (b.order || 0)
-        );
+        const sorted = unique.sort((a, b) => (a.order || 0) - (b.order || 0));
 
         setModuleOptions(sorted);
       } catch (error) {
@@ -146,7 +154,7 @@ function UserDetailContent() {
     setEnabledModules((prev) =>
       prev.includes(moduleId)
         ? prev.filter((id) => id !== moduleId)
-        : [...prev, moduleId]
+        : [...prev, moduleId],
     );
   };
 
@@ -154,7 +162,7 @@ function UserDetailContent() {
     setEnabledDashboardSections((prev) =>
       prev.includes(sectionKey)
         ? prev.filter((key) => key !== sectionKey)
-        : [...prev, sectionKey]
+        : [...prev, sectionKey],
     );
   };
 
@@ -186,6 +194,11 @@ function UserDetailContent() {
       await updateUserProfile(uid, {
         role,
         region,
+        knowledgeCenterAuditEnabled,
+        auditSettings: {
+          ...(user?.auditSettings || {}),
+          knowledgeCenter: knowledgeCenterAuditEnabled,
+        },
         enabledModules,
         enabledDashboardSections,
       });
@@ -249,9 +262,7 @@ function UserDetailContent() {
           </div>
 
           {module.description && (
-            <p className="mt-2 text-sm text-slate-500">
-              {module.description}
-            </p>
+            <p className="mt-2 text-sm text-slate-500">{module.description}</p>
           )}
         </div>
       </label>
@@ -353,6 +364,47 @@ function UserDetailContent() {
                 </select>
               </div>
             </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold text-slate-900">
+              Audit Log Settings
+            </h2>
+
+            <label
+              className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 text-sm transition ${
+                knowledgeCenterAuditEnabled
+                  ? "border-blue-200 bg-blue-50"
+                  : "border-slate-200 bg-white hover:border-blue-200"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={knowledgeCenterAuditEnabled}
+                onChange={(e) =>
+                  setKnowledgeCenterAuditEnabled(e.target.checked)
+                }
+                className="mt-1 h-4 w-4"
+              />
+
+              <div>
+                <div className="font-medium text-slate-900">
+                  Knowledge Center Usage Audit
+                </div>
+
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  Track this user's Knowledge Center usage, including page view,
+                  book open, file preview, search-result preview, open in Google
+                  Drive, and download events.
+                </p>
+
+                <p className="mt-2 text-xs leading-5 text-slate-400">
+                  Recommended for Sales and Marketing users only. This setting
+                  controls whether Lumens Portal passes audit=1 to the embedded
+                  Knowledge Center.
+                </p>
+              </div>
+            </label>
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -459,7 +511,7 @@ function UserDetailContent() {
                 {workspaceModules.length > 0 ? (
                   <div className="grid gap-3 md:grid-cols-2">
                     {workspaceModules.map((module) =>
-                      renderModuleCheckbox(module)
+                      renderModuleCheckbox(module),
                     )}
                   </div>
                 ) : (
@@ -477,7 +529,7 @@ function UserDetailContent() {
                 {resourceModules.length > 0 ? (
                   <div className="grid gap-3 md:grid-cols-2">
                     {resourceModules.map((module) =>
-                      renderModuleCheckbox(module)
+                      renderModuleCheckbox(module),
                     )}
                   </div>
                 ) : (

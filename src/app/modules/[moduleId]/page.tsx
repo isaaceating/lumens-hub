@@ -9,6 +9,71 @@ import { signInWithGoogle } from "@/lib/auth";
 import { getModuleById } from "@/lib/modules";
 import { useUserProfile } from "@/lib/useUserProfile";
 
+const isKnowledgeCenterModule = (module: any) => {
+  const moduleId = String(module?.id || "").toLowerCase();
+  const moduleName = String(module?.name || "").toLowerCase();
+  const embedUrl = String(module?.embedUrl || "").toLowerCase();
+
+  return (
+    moduleId.includes("knowledge") ||
+    moduleName.includes("knowledge") ||
+    moduleName.includes("知識") ||
+    embedUrl.includes("script.google.com")
+  );
+};
+
+const getKnowledgeCenterAuditEnabled = (module: any, profile: any) => {
+  if (!isKnowledgeCenterModule(module)) return false;
+
+  return (
+    profile?.knowledgeCenterAuditEnabled === true ||
+    profile?.auditSettings?.knowledgeCenter === true
+  );
+};
+
+const buildEmbeddedModuleSrc = ({
+  src,
+  module,
+  user,
+  profile,
+}: {
+  src: string;
+  module: any;
+  user: any;
+  profile: any;
+}) => {
+  if (!src) return "";
+
+  const auditEnabled = getKnowledgeCenterAuditEnabled(module, profile);
+
+  const params: Record<string, string> = {
+    source: "portal",
+    email: String(profile?.email || user?.email || ""),
+    name: String(profile?.name || user?.displayName || ""),
+    role: String(profile?.role || ""),
+    region: String(profile?.region || ""),
+    department: String(profile?.department || ""),
+    audit: auditEnabled ? "1" : "0",
+  };
+
+  try {
+    const url = new URL(src);
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== "") {
+        url.searchParams.set(key, value);
+      }
+    });
+
+    return url.toString();
+  } catch {
+    const query = new URLSearchParams(params).toString();
+    const separator = src.includes("?") ? "&" : "?";
+
+    return `${src}${separator}${query}`;
+  }
+};
+
 export default function ModuleRendererPage() {
   const params = useParams();
   const moduleId = params.moduleId as string;
@@ -152,9 +217,7 @@ export default function ModuleRendererPage() {
     if (!module.embedUrl) {
       return (
         <div className="mx-auto max-w-xl rounded-2xl border border-red-200 bg-red-50 p-8 text-center shadow-sm">
-          <h1 className="text-2xl font-bold text-red-700">
-            Missing Embed URL
-          </h1>
+          <h1 className="text-2xl font-bold text-red-700">Missing Embed URL</h1>
           <p className="mt-3 text-red-700">
             This embedded resource has not been configured correctly.
           </p>
@@ -162,11 +225,18 @@ export default function ModuleRendererPage() {
       );
     }
 
+    const embeddedSrc = buildEmbeddedModuleSrc({
+      src: module.embedUrl,
+      module,
+      user,
+      profile,
+    });
+
     return (
       <div className="-m-8 h-[calc(100vh-64px)] bg-white">
         <EmbeddedModuleFrame
           title={module.name || "Embedded Module"}
-          src={module.embedUrl}
+          src={embeddedSrc}
           height="calc(100vh - 64px)"
         />
       </div>
