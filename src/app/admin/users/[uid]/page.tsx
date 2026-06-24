@@ -8,8 +8,28 @@ import { getUserById, updateUserProfile } from "@/lib/users";
 import { modules as staticModules } from "@/app/config/modules";
 import { getAllModules } from "@/lib/modules";
 
-const ROLES = ["user", "admin"];
-const REGIONS = ["APAC", "LUI", "LEI", "LCG"];
+const SYSTEM_ROLES = ["user", "admin"];
+
+const ACCOUNT_TYPES = [
+  "Lumens",
+  "Distributor",
+  "System Integrator",
+  "End User",
+];
+
+const REGIONS = ["HQ", "APAC", "LUI", "LEI", "LCG"];
+
+const LUMENS_DEPARTMENTS = ["SAL", "MKT", "PDM", "TS", "Management"];
+
+const JOB_ROLES = [
+  "Sales",
+  "Marketing",
+  "Product Manager",
+  "Pre-sales",
+  "Technical Support",
+  "Management",
+  "Other",
+];
 
 type DashboardSectionKey =
   | "news"
@@ -54,21 +74,46 @@ const defaultDashboardSections = dashboardSectionOptions.map(
   (item) => item.key,
 );
 
+const getEffectiveDepartment = (accountType: string, department: string) => {
+  if (accountType !== "Lumens") return "VIP Partner";
+  return department || "SAL";
+};
+
+const getEffectiveJobRoleForDisplay = (
+  jobRole: string,
+  customJobRole: string,
+) => {
+  if (jobRole === "Other" && customJobRole.trim()) {
+    return customJobRole.trim();
+  }
+
+  return jobRole || "Other";
+};
+
 function UserDetailContent() {
   const params = useParams();
   const uid = params.uid as string;
 
   const [user, setUser] = useState<any>(null);
 
-  const [role, setRole] = useState("user");
+  const [name, setName] = useState("");
+  const [systemRole, setSystemRole] = useState("user");
+
+  const [accountType, setAccountType] = useState("Lumens");
   const [region, setRegion] = useState("APAC");
+  const [department, setDepartment] = useState("SAL");
+  const [jobRole, setJobRole] = useState("Other");
+  const [customJobRole, setCustomJobRole] = useState("");
+
   const [knowledgeCenterAuditEnabled, setKnowledgeCenterAuditEnabled] =
     useState(false);
+
   const [enabledModules, setEnabledModules] = useState<string[]>([]);
 
   const [enabledDashboardSections, setEnabledDashboardSections] = useState<
     string[]
   >(defaultDashboardSections);
+
   const [moduleOptions, setModuleOptions] = useState<any[]>([]);
   const [loadingUser, setLoadingUser] = useState(true);
   const [loadingModules, setLoadingModules] = useState(true);
@@ -98,15 +143,33 @@ function UserDetailContent() {
 
         if (data) {
           setUser(data);
-          setRole(data.role || "user");
+
+          setName(data.name || data.googleName || "");
+          setSystemRole(data.role || "user");
+
+          const nextAccountType = data.accountType || "Lumens";
+          setAccountType(nextAccountType);
+
           setRegion(data.region || "APAC");
+
+          const nextDepartment =
+            nextAccountType === "Lumens"
+              ? data.department || "SAL"
+              : "VIP Partner";
+          setDepartment(nextDepartment);
+
+          setJobRole(data.jobRole || "Other");
+          setCustomJobRole(data.customJobRole || "");
+
           setKnowledgeCenterAuditEnabled(
             data.knowledgeCenterAuditEnabled === true ||
               data.auditSettings?.knowledgeCenter === true,
           );
+
           setEnabledModules(
             Array.isArray(data.enabledModules) ? data.enabledModules : [],
           );
+
           setEnabledDashboardSections(
             Array.isArray(data.enabledDashboardSections)
               ? data.enabledDashboardSections
@@ -150,6 +213,16 @@ function UserDetailContent() {
     fetchModules();
   }, []);
 
+  const handleAccountTypeChange = (nextAccountType: string) => {
+    setAccountType(nextAccountType);
+
+    if (nextAccountType !== "Lumens") {
+      setDepartment("VIP Partner");
+    } else if (department === "VIP Partner") {
+      setDepartment("SAL");
+    }
+  };
+
   const toggleModule = (moduleId: string) => {
     setEnabledModules((prev) =>
       prev.includes(moduleId)
@@ -187,18 +260,41 @@ function UserDetailContent() {
   };
 
   const handleSave = async () => {
+    const trimmedName = name.trim();
+
+    if (!trimmedName) {
+      alert("Name is required.");
+      return;
+    }
+
+    if (jobRole === "Other" && !customJobRole.trim()) {
+      alert("Please enter a custom job role when Job Role is Other.");
+      return;
+    }
+
     setSaving(true);
     setSaved(false);
 
+    const effectiveDepartment = getEffectiveDepartment(accountType, department);
+
     try {
       await updateUserProfile(uid, {
-        role,
+        name: trimmedName,
+        isNameManuallyEdited: true,
+
+        role: systemRole,
+        accountType,
         region,
+        department: effectiveDepartment,
+        jobRole,
+        customJobRole: jobRole === "Other" ? customJobRole.trim() : "",
+
         knowledgeCenterAuditEnabled,
         auditSettings: {
           ...(user?.auditSettings || {}),
           knowledgeCenter: knowledgeCenterAuditEnabled,
         },
+
         enabledModules,
         enabledDashboardSections,
       });
@@ -270,6 +366,11 @@ function UserDetailContent() {
   };
 
   const loading = loadingUser || loadingModules;
+  const effectiveDepartment = getEffectiveDepartment(accountType, department);
+  const effectiveJobRole = getEffectiveJobRoleForDisplay(
+    jobRole,
+    customJobRole,
+  );
 
   return (
     <div>
@@ -283,7 +384,8 @@ function UserDetailContent() {
 
         <h1 className="text-2xl font-bold text-slate-900">User Detail</h1>
         <p className="mt-2 text-slate-600">
-          Manage user role, region, dashboard sections, and module access.
+          Manage user profile, portal permission, audit settings, dashboard
+          sections, and module access.
         </p>
       </div>
 
@@ -304,20 +406,37 @@ function UserDetailContent() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <div className="text-sm text-slate-500">Name</div>
-                <div className="font-medium text-slate-900">
-                  {user.name || "No Name"}
-                </div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Name
+                </label>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                  placeholder="Display name"
+                />
+                <p className="mt-1 text-xs text-slate-400">
+                  Used as the display name inside Lumens Portal and audit logs.
+                </p>
               </div>
 
               <div>
                 <div className="text-sm text-slate-500">Email</div>
-                <div className="text-slate-900">{user.email || "No Email"}</div>
+                <div className="mt-2 text-slate-900">
+                  {user.email || "No Email"}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-sm text-slate-500">Google Name</div>
+                <div className="mt-2 text-slate-900">
+                  {user.googleName || user.name || "No Google Name"}
+                </div>
               </div>
 
               <div>
                 <div className="text-sm text-slate-500">UID</div>
-                <div className="break-all font-mono text-xs text-slate-700">
+                <div className="mt-2 break-all font-mono text-xs text-slate-700">
                   {uid}
                 </div>
               </div>
@@ -326,25 +445,28 @@ function UserDetailContent() {
 
           <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="mb-4 text-lg font-semibold text-slate-900">
-              Access Settings
+              User Profile
             </h2>
 
             <div className="grid gap-6 md:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Role
+                  Account Type
                 </label>
                 <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
+                  value={accountType}
+                  onChange={(e) => handleAccountTypeChange(e.target.value)}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                 >
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
+                  {ACCOUNT_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-xs text-slate-400">
+                  Non-Lumens accounts are grouped under VIP Partner department.
+                </p>
               </div>
 
               <div>
@@ -362,6 +484,93 @@ function UserDetailContent() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Department
+                </label>
+
+                {accountType === "Lumens" ? (
+                  <select
+                    value={department === "VIP Partner" ? "SAL" : department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                  >
+                    {LUMENS_DEPARTMENTS.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                    VIP Partner
+                  </div>
+                )}
+
+                <p className="mt-1 text-xs text-slate-400">
+                  Saved value: {effectiveDepartment}
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Job Role
+                </label>
+                <select
+                  value={jobRole}
+                  onChange={(e) => setJobRole(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                >
+                  {JOB_ROLES.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+
+                {jobRole === "Other" && (
+                  <input
+                    value={customJobRole}
+                    onChange={(e) => setCustomJobRole(e.target.value)}
+                    className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                    placeholder="Enter custom job role"
+                  />
+                )}
+
+                <p className="mt-1 text-xs text-slate-400">
+                  Usage log userRole: {effectiveJobRole}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold text-slate-900">
+              Portal Permission
+            </h2>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  System Role
+                </label>
+                <select
+                  value={systemRole}
+                  onChange={(e) => setSystemRole(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                >
+                  {SYSTEM_ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-slate-400">
+                  This controls Portal admin permission. It is not used as the
+                  Knowledge Center usage role.
+                </p>
               </div>
             </div>
           </div>
@@ -399,9 +608,8 @@ function UserDetailContent() {
                 </p>
 
                 <p className="mt-2 text-xs leading-5 text-slate-400">
-                  Recommended for Sales and Marketing users only. This setting
-                  controls whether Lumens Portal passes audit=1 to the embedded
-                  Knowledge Center.
+                  The usage log will use User Profile fields: Region,
+                  Department, and Job Role.
                 </p>
               </div>
             </label>
@@ -564,7 +772,12 @@ function UserDetailContent() {
             )}
 
             <span className="text-sm text-slate-500">
-              Current role: {user.role} / Region: {user.region}
+              System Role: {user.role} / Region: {user.region} / Department:{" "}
+              {user.department || "-"} / Usage Role:{" "}
+              {getEffectiveJobRoleForDisplay(
+                user.jobRole || "Other",
+                user.customJobRole || "",
+              )}
             </span>
           </div>
         </div>

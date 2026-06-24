@@ -51,11 +51,20 @@ export const getUserById = async (uid: string) => {
 export const updateUserProfile = async (
   uid: string,
   data: {
+    name?: string;
+    googleName?: string;
+    isNameManuallyEdited?: boolean;
+
     role?: string;
+    accountType?: string;
     region?: string;
     department?: string;
+    jobRole?: string;
+    customJobRole?: string;
+
     enabledModules?: string[];
     enabledDashboardSections?: string[];
+
     knowledgeCenterAuditEnabled?: boolean;
     auditSettings?: {
       knowledgeCenter?: boolean;

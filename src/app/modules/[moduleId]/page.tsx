@@ -31,6 +31,21 @@ const getKnowledgeCenterAuditEnabled = (module: any, profile: any) => {
   );
 };
 
+const getUsageRole = (profile: any) => {
+  const jobRole = String(profile?.jobRole || "").trim();
+  const customJobRole = String(profile?.customJobRole || "").trim();
+
+  if (jobRole === "Other" && customJobRole) {
+    return customJobRole;
+  }
+
+  return (
+    jobRole ||
+    String(profile?.department || "").trim() ||
+    String(profile?.role || "").trim()
+  );
+};
+
 const buildEmbeddedModuleSrc = ({
   src,
   module,
@@ -50,7 +65,8 @@ const buildEmbeddedModuleSrc = ({
     source: "portal",
     email: String(profile?.email || user?.email || ""),
     name: String(profile?.name || user?.displayName || ""),
-    role: String(profile?.role || ""),
+    accountType: String(profile?.accountType || ""),
+    role: getUsageRole(profile),
     region: String(profile?.region || ""),
     department: String(profile?.department || ""),
     audit: auditEnabled ? "1" : "0",

@@ -7,37 +7,62 @@ export const createOrUpdateUserProfile = async (user: any) => {
   const userRef = doc(db, "users", user.uid);
   const userSnap = await getDoc(userRef);
 
+  const googleName = user.displayName || "";
+  const email = user.email || "";
+  const photo = user.photoURL || "";
+  const now = new Date().toISOString();
+
   if (!userSnap.exists()) {
     await setDoc(userRef, {
       uid: user.uid,
-      name: user.displayName || "",
-      email: user.email || "",
-      photo: user.photoURL || "",
+
+      name: googleName,
+      googleName,
+      email,
+      photo,
+      isNameManuallyEdited: false,
+
+      // Portal permission
       role: "user",
+
+      // User profile
+      accountType: "Lumens",
       region: "APAC",
-      department: "",
+      department: "SAL",
+      jobRole: "Other",
+      customJobRole: "",
+
+      // Audit
       knowledgeCenterAuditEnabled: false,
       auditSettings: {
         knowledgeCenter: false,
       },
+
       enabledModules: ["dashboard", "training"],
       modulePermissions: {
         dashboard: "view",
         training: "view",
       },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+
+      createdAt: now,
+      updatedAt: now,
     });
-  } else {
-    await setDoc(
-      userRef,
-      {
-        name: user.displayName || "",
-        email: user.email || "",
-        photo: user.photoURL || "",
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true },
-    );
+
+    return;
   }
+
+  const current = userSnap.data();
+  const isNameManuallyEdited = current.isNameManuallyEdited === true;
+
+  await setDoc(
+    userRef,
+    {
+      ...(isNameManuallyEdited ? {} : { name: googleName }),
+      googleName,
+      email,
+      photo,
+      updatedAt: now,
+    },
+    { merge: true },
+  );
 };
