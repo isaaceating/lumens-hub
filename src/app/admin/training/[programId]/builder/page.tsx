@@ -17,14 +17,20 @@ import {
   FileText,
   Layers3,
   ListChecks,
+  Pencil,
+  Plus,
   Route,
   Save,
   Settings2,
   Video,
 } from "lucide-react";
 import {
+  createTrainingLevel,
+  getTrainingLevelsByProgram,
   getTrainingProgramById,
+  TrainingLevel,
   TrainingStatus,
+  updateTrainingLevel,
   updateTrainingProgram,
 } from "@/lib/training";
 import BuilderPage from "../page";
@@ -32,6 +38,13 @@ import BuilderPage from "../page";
 type BuilderTabId = "program" | "sections" | "courses" | "lessons" | "structure";
 
 const statusOptions: TrainingStatus[] = ["draft", "published", "archived"];
+
+const emptySectionForm = {
+  title: "",
+  description: "",
+  status: "draft" as TrainingStatus,
+  order: 1 as number | "",
+};
 
 const workflowSteps: {
   id: BuilderTabId;
@@ -58,8 +71,8 @@ const workflowSteps: {
     shortTitle: "Sections",
     description: "Create levels, chapters, or phases.",
     detail:
-      "Sections define the top layer of the learning structure. This tab will hold add/edit controls for sections after Program is stable.",
-    status: "Planned",
+      "Sections define the top layer of the learning structure. You can now add and edit section metadata here.",
+    status: "Live",
     icon: Layers3,
   },
   {
@@ -104,6 +117,7 @@ export default function AdvancedTrainingBuilderRoute() {
   const params = useParams();
   const programId = params.programId as string;
   const [activeTab, setActiveTab] = useState<BuilderTabId>("program");
+
   const [loadingProgram, setLoadingProgram] = useState(true);
   const [savingProgram, setSavingProgram] = useState(false);
   const [programMessage, setProgramMessage] = useState("");
@@ -114,6 +128,13 @@ export default function AdvancedTrainingBuilderRoute() {
     status: "draft" as TrainingStatus,
     order: 1 as number | "",
   });
+
+  const [loadingSections, setLoadingSections] = useState(true);
+  const [savingSection, setSavingSection] = useState(false);
+  const [sectionMessage, setSectionMessage] = useState("");
+  const [sections, setSections] = useState<TrainingLevel[]>([]);
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+  const [sectionForm, setSectionForm] = useState(emptySectionForm);
 
   const activeStep = workflowSteps.find((step) => step.id === activeTab) || workflowSteps[0];
   const ActiveIcon = activeStep.icon;
@@ -143,8 +164,32 @@ export default function AdvancedTrainingBuilderRoute() {
     }
   };
 
+  const fetchSections = async () => {
+    if (!programId) return;
+
+    setLoadingSections(true);
+
+    try {
+      const data = await getTrainingLevelsByProgram(programId);
+      setSections(data);
+
+      if (!editingSectionId) {
+        setSectionForm((prev) => ({
+          ...prev,
+          order: data.length + 1,
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to load sections:", error);
+      setSectionMessage("Failed to load sections.");
+    } finally {
+      setLoadingSections(false);
+    }
+  };
+
   useEffect(() => {
     fetchProgram();
+    fetchSections();
   }, [programId]);
 
   const handleProgramChange = (
@@ -157,6 +202,39 @@ export default function AdvancedTrainingBuilderRoute() {
       ...prev,
       [name]: name === "order" ? (value === "" ? "" : Number(value)) : value,
     }));
+  };
+
+  const handleSectionChange = (
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = event.target;
+    setSectionMessage("");
+
+    setSectionForm((prev) => ({
+      ...prev,
+      [name]: name === "order" ? (value === "" ? "" : Number(value)) : value,
+    }));
+  };
+
+  const resetSectionForm = () => {
+    setEditingSectionId(null);
+    setSectionForm({
+      ...emptySectionForm,
+      order: sections.length + 1,
+    });
+    setSectionMessage("");
+  };
+
+  const startEditSection = (section: TrainingLevel) => {
+    setEditingSectionId(section.id);
+    setSectionForm({
+      title: section.title || "",
+      description: section.description || "",
+      status: section.status || "draft",
+      order: section.order ?? 1,
+    });
+    setActiveTab("sections");
+    setSectionMessage("");
   };
 
   const handleProgramSave = async (event: FormEvent) => {
@@ -189,122 +267,320 @@ export default function AdvancedTrainingBuilderRoute() {
     }
   };
 
-  const renderActiveTabPanel = () => {
-    if (activeTab === "program") {
-      return (
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 ring-1 ring-blue-100">
-                <Settings2 size={20} />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">Program Settings</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Edit the program-level metadata that controls the frontend training module.
-                </p>
-              </div>
-            </div>
+  const handleSectionSave = async (event: FormEvent) => {
+    event.preventDefault();
 
-            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(programForm.status)}`}>
-              {programForm.status}
-            </span>
+    if (!sectionForm.title.trim()) {
+      setSectionMessage("Section title is required.");
+      return;
+    }
+
+    setSavingSection(true);
+    setSectionMessage("");
+
+    try {
+      const payload = {
+        programId,
+        title: sectionForm.title.trim(),
+        description: sectionForm.description.trim(),
+        status: sectionForm.status,
+        order: sectionForm.order === "" ? 0 : Number(sectionForm.order),
+      };
+
+      if (editingSectionId) {
+        await updateTrainingLevel(editingSectionId, payload);
+        setSectionMessage("Section updated.");
+      } else {
+        await createTrainingLevel(payload);
+        setSectionMessage("Section created.");
+      }
+
+      resetSectionForm();
+      await fetchSections();
+    } catch (error) {
+      console.error("Failed to save section:", error);
+      setSectionMessage("Failed to save section.");
+    } finally {
+      setSavingSection(false);
+    }
+  };
+
+  const renderProgramPanel = () => {
+    return (
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 ring-1 ring-blue-100">
+              <Settings2 size={20} />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Program Settings</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Edit the program-level metadata that controls the frontend training module.
+              </p>
+            </div>
           </div>
 
-          {loadingProgram ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
-              Loading program settings...
+          <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(programForm.status)}`}>
+            {programForm.status}
+          </span>
+        </div>
+
+        {loadingProgram ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
+            Loading program settings...
+          </div>
+        ) : (
+          <form onSubmit={handleProgramSave} className="grid gap-5 md:grid-cols-2">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Program ID</label>
+              <input
+                value={programId}
+                disabled
+                className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 font-mono text-sm text-slate-500"
+              />
+              <p className="mt-1 text-xs text-slate-500">Program ID cannot be changed.</p>
             </div>
-          ) : (
-            <form onSubmit={handleProgramSave} className="grid gap-5 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Program ID</label>
-                <input
-                  value={programId}
-                  disabled
-                  className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 font-mono text-sm text-slate-500"
-                />
-                <p className="mt-1 text-xs text-slate-500">Program ID cannot be changed.</p>
-              </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Title</label>
-                <input
-                  name="title"
-                  value={programForm.title}
-                  onChange={handleProgramChange}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
-                />
-              </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Title</label>
+              <input
+                name="title"
+                value={programForm.title}
+                onChange={handleProgramChange}
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+              />
+            </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Owner Department</label>
-                <input
-                  name="ownerDepartment"
-                  value={programForm.ownerDepartment}
-                  onChange={handleProgramChange}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
-                />
-              </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Owner Department</label>
+              <input
+                name="ownerDepartment"
+                value={programForm.ownerDepartment}
+                onChange={handleProgramChange}
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+              />
+            </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Status</label>
-                <select
-                  name="status"
-                  value={programForm.status}
-                  onChange={handleProgramChange}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
-                >
-                  {statusOptions.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-slate-500">
-                  Published programs appear as native training modules.
-                </p>
-              </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Status</label>
+              <select
+                name="status"
+                value={programForm.status}
+                onChange={handleProgramChange}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+              >
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-slate-500">
+                Published programs appear as native training modules.
+              </p>
+            </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Order</label>
-                <input
-                  name="order"
-                  type="number"
-                  value={programForm.order}
-                  onChange={handleProgramChange}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
-                />
-              </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Order</label>
+              <input
+                name="order"
+                type="number"
+                value={programForm.order}
+                onChange={handleProgramChange}
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+              />
+            </div>
 
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-slate-700">Description</label>
-                <textarea
-                  name="description"
-                  value={programForm.description}
-                  onChange={handleProgramChange}
-                  rows={5}
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
-                />
-              </div>
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-sm font-medium text-slate-700">Description</label>
+              <textarea
+                name="description"
+                value={programForm.description}
+                onChange={handleProgramChange}
+                rows={5}
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+              />
+            </div>
 
-              <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-                <div className="text-sm text-slate-500">
-                  {programMessage || "Save here to update the program and synced native module."}
-                </div>
+            <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+              <div className="text-sm text-slate-500">
+                {programMessage || "Save here to update the program and synced native module."}
+              </div>
+              <button
+                type="submit"
+                disabled={savingProgram}
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:bg-slate-400"
+              >
+                <Save size={16} /> {savingProgram ? "Saving..." : "Save Program"}
+              </button>
+            </div>
+          </form>
+        )}
+      </section>
+    );
+  };
+
+  const renderSectionsPanel = () => {
+    return (
+      <section className="grid gap-6 lg:grid-cols-[420px_1fr]">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 ring-1 ring-blue-100">
+              {editingSectionId ? <Pencil size={20} /> : <Plus size={20} />}
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                {editingSectionId ? "Edit Section" : "Add Section"}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Sections are the top-level chapters or phases inside this training program.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSectionSave} className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Section Title</label>
+              <input
+                name="title"
+                value={sectionForm.title}
+                onChange={handleSectionChange}
+                placeholder="Level 1 · Foundation"
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Status</label>
+              <select
+                name="status"
+                value={sectionForm.status}
+                onChange={handleSectionChange}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+              >
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Order</label>
+              <input
+                name="order"
+                type="number"
+                value={sectionForm.order}
+                onChange={handleSectionChange}
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Description</label>
+              <textarea
+                name="description"
+                value={sectionForm.description}
+                onChange={handleSectionChange}
+                rows={4}
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+              <div className="text-sm text-slate-500">
+                {sectionMessage || "Create or update section metadata here."}
+              </div>
+              <div className="flex gap-2">
+                {editingSectionId && (
+                  <button
+                    type="button"
+                    onClick={resetSectionForm}
+                    className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200"
+                  >
+                    Cancel
+                  </button>
+                )}
                 <button
                   type="submit"
-                  disabled={savingProgram}
+                  disabled={savingSection}
                   className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:bg-slate-400"
                 >
-                  <Save size={16} /> {savingProgram ? "Saving..." : "Save Program"}
+                  <Save size={16} /> {savingSection ? "Saving..." : editingSectionId ? "Update Section" : "Create Section"}
                 </button>
               </div>
-            </form>
+            </div>
+          </form>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Section List</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Showing {sections.length} sections in this program. Delete still stays in legacy editor for now.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={fetchSections}
+              className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200"
+            >
+              Refresh
+            </button>
+          </div>
+
+          {loadingSections ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
+              Loading sections...
+            </div>
+          ) : sections.length > 0 ? (
+            <div className="space-y-3">
+              {sections.map((section) => (
+                <div key={section.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                          Order {section.order || 0}
+                        </span>
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(section.status)}`}>
+                          {section.status}
+                        </span>
+                      </div>
+                      <h3 className="mt-3 font-semibold text-slate-900">{section.title}</h3>
+                      <p className="mt-1 text-sm leading-6 text-slate-500">
+                        {section.description || "No description."}
+                      </p>
+                      <p className="mt-2 font-mono text-xs text-slate-400">{section.id}</p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => startEditSection(section)}
+                      className="inline-flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                    >
+                      <Pencil size={15} /> Edit
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">
+              No sections yet. Create the first section from the form on the left.
+            </div>
           )}
-        </section>
-      );
-    }
+        </div>
+      </section>
+    );
+  };
+
+  const renderActiveTabPanel = () => {
+    if (activeTab === "program") return renderProgramPanel();
+    if (activeTab === "sections") return renderSectionsPanel();
 
     return (
       <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-slate-500 shadow-sm">
@@ -359,12 +635,12 @@ export default function AdvancedTrainingBuilderRoute() {
             </div>
             <h2 className="mt-3 text-lg font-semibold text-slate-900">Build from top to bottom</h2>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
-              This is the new builder shell. Each tab will gradually replace the legacy editor below.
+              Program and Sections are now live in the new builder. Remaining tabs still use the legacy editor below.
             </p>
           </div>
 
           <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
-            <CheckCircle2 size={15} /> Program tab migrated
+            <CheckCircle2 size={15} /> Program + Sections migrated
           </div>
         </div>
 
@@ -426,7 +702,7 @@ export default function AdvancedTrainingBuilderRoute() {
           <div>
             <div className="text-sm font-semibold text-slate-700">Legacy advanced editor area</div>
             <p className="mt-1 text-xs text-slate-500">
-              Full create/edit/delete controls remain here until sections, courses, lessons, and structure tabs are migrated.
+              Full create/edit/delete controls remain here until courses, lessons, and structure tabs are migrated.
             </p>
           </div>
         </div>
