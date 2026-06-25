@@ -26,14 +26,18 @@ import {
 } from "lucide-react";
 import {
   createTrainingCourse,
+  createTrainingLesson,
   createTrainingLevel,
   getTrainingCoursesByProgram,
+  getTrainingLessonsByProgram,
   getTrainingLevelsByProgram,
   getTrainingProgramById,
   TrainingCourse,
+  TrainingLesson,
   TrainingLevel,
   TrainingStatus,
   updateTrainingCourse,
+  updateTrainingLesson,
   updateTrainingLevel,
   updateTrainingProgram,
 } from "@/lib/training";
@@ -54,6 +58,17 @@ const emptyCourseForm = {
   levelId: "",
   title: "",
   description: "",
+  status: "draft" as TrainingStatus,
+  order: 1 as number | "",
+};
+
+const emptyLessonForm = {
+  courseId: "",
+  title: "",
+  description: "",
+  videoUrl: "",
+  videoType: "youtube",
+  duration: "",
   status: "draft" as TrainingStatus,
   order: 1 as number | "",
 };
@@ -101,10 +116,10 @@ const workflowSteps: {
     id: "lessons",
     title: "4. Lessons",
     shortTitle: "Lessons",
-    description: "Add video, duration, materials, and quiz.",
+    description: "Add video, duration, and basic info.",
     detail:
-      "Lessons are the most complex part because they include video, materials, completion options, and quizzes. This will be migrated last.",
-    status: "Planned",
+      "Lesson basic information is now editable here. Materials and quiz settings remain in the legacy editor until the next migration step.",
+    status: "Live",
     icon: Video,
   },
   {
@@ -155,6 +170,13 @@ export default function AdvancedTrainingBuilderRoute() {
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
   const [courseForm, setCourseForm] = useState(emptyCourseForm);
 
+  const [loadingLessons, setLoadingLessons] = useState(true);
+  const [savingLesson, setSavingLesson] = useState(false);
+  const [lessonMessage, setLessonMessage] = useState("");
+  const [lessons, setLessons] = useState<TrainingLesson[]>([]);
+  const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
+  const [lessonForm, setLessonForm] = useState(emptyLessonForm);
+
   const activeStep = workflowSteps.find((step) => step.id === activeTab) || workflowSteps[0];
   const ActiveIcon = activeStep.icon;
   const programTag = programForm.title.trim() || programId;
@@ -169,12 +191,30 @@ export default function AdvancedTrainingBuilderRoute() {
     return sections.find((section) => section.id === levelId)?.order ?? Number.MAX_SAFE_INTEGER - 1;
   };
 
+  const getCourse = (courseId?: string) => courses.find((course) => course.id === courseId);
+  const getCourseTitle = (courseId?: string) => getCourse(courseId)?.title || "Unknown course";
+  const getCourseOrder = (courseId?: string) => getCourse(courseId)?.order ?? Number.MAX_SAFE_INTEGER;
+  const getCourseSectionId = (courseId?: string) => getCourse(courseId)?.levelId || "";
+
   const sortedCourses = [...courses].sort((a, b) => {
     const sectionOrderDiff = getSectionOrder(a.levelId) - getSectionOrder(b.levelId);
     if (sectionOrderDiff !== 0) return sectionOrderDiff;
 
     const courseOrderDiff = (a.order || 0) - (b.order || 0);
     if (courseOrderDiff !== 0) return courseOrderDiff;
+
+    return (a.title || "").localeCompare(b.title || "");
+  });
+
+  const sortedLessons = [...lessons].sort((a, b) => {
+    const sectionOrderDiff = getSectionOrder(getCourseSectionId(a.courseId)) - getSectionOrder(getCourseSectionId(b.courseId));
+    if (sectionOrderDiff !== 0) return sectionOrderDiff;
+
+    const courseOrderDiff = getCourseOrder(a.courseId) - getCourseOrder(b.courseId);
+    if (courseOrderDiff !== 0) return courseOrderDiff;
+
+    const lessonOrderDiff = (a.order || 0) - (b.order || 0);
+    if (lessonOrderDiff !== 0) return lessonOrderDiff;
 
     return (a.title || "").localeCompare(b.title || "");
   });
@@ -250,10 +290,34 @@ export default function AdvancedTrainingBuilderRoute() {
     }
   };
 
+  const fetchLessons = async () => {
+    if (!programId) return;
+
+    setLoadingLessons(true);
+
+    try {
+      const data = await getTrainingLessonsByProgram(programId);
+      setLessons(data);
+
+      if (!editingLessonId) {
+        setLessonForm((prev) => ({
+          ...prev,
+          order: data.length + 1,
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to load lessons:", error);
+      setLessonMessage("Failed to load lessons.");
+    } finally {
+      setLoadingLessons(false);
+    }
+  };
+
   useEffect(() => {
     fetchProgram();
     fetchSections();
     fetchCourses();
+    fetchLessons();
   }, [programId]);
 
   const handleProgramChange = (
@@ -292,6 +356,18 @@ export default function AdvancedTrainingBuilderRoute() {
     }));
   };
 
+  const handleLessonChange = (
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = event.target;
+    setLessonMessage("");
+
+    setLessonForm((prev) => ({
+      ...prev,
+      [name]: name === "order" ? (value === "" ? "" : Number(value)) : value,
+    }));
+  };
+
   const resetSectionForm = () => {
     setEditingSectionId(null);
     setSectionForm({ ...emptySectionForm, order: sections.length + 1 });
@@ -302,6 +378,12 @@ export default function AdvancedTrainingBuilderRoute() {
     setEditingCourseId(null);
     setCourseForm({ ...emptyCourseForm, levelId: sections[0]?.id || "", order: courses.length + 1 });
     setCourseMessage("");
+  };
+
+  const resetLessonForm = () => {
+    setEditingLessonId(null);
+    setLessonForm({ ...emptyLessonForm, courseId: sortedCourses[0]?.id || "", order: lessons.length + 1 });
+    setLessonMessage("");
   };
 
   const startEditSection = (section: TrainingLevel) => {
@@ -327,6 +409,22 @@ export default function AdvancedTrainingBuilderRoute() {
     });
     setActiveTab("courses");
     setCourseMessage("");
+  };
+
+  const startEditLesson = (lesson: TrainingLesson) => {
+    setEditingLessonId(lesson.id);
+    setLessonForm({
+      courseId: lesson.courseId || "",
+      title: lesson.title || "",
+      description: lesson.description || "",
+      videoUrl: lesson.videoUrl || "",
+      videoType: lesson.videoType || "youtube",
+      duration: lesson.duration || "",
+      status: lesson.status || "draft",
+      order: lesson.order ?? 1,
+    });
+    setActiveTab("lessons");
+    setLessonMessage("");
   };
 
   const handleProgramSave = async (event: FormEvent) => {
@@ -436,6 +534,56 @@ export default function AdvancedTrainingBuilderRoute() {
     }
   };
 
+  const handleLessonSave = async (event: FormEvent) => {
+    event.preventDefault();
+
+    if (!lessonForm.courseId) {
+      setLessonMessage("Parent course is required.");
+      return;
+    }
+
+    if (!lessonForm.title.trim()) {
+      setLessonMessage("Lesson title is required.");
+      return;
+    }
+
+    const parentCourse = getCourse(lessonForm.courseId);
+
+    setSavingLesson(true);
+    setLessonMessage("");
+
+    try {
+      const payload = {
+        programId,
+        levelId: parentCourse?.levelId || "",
+        courseId: lessonForm.courseId,
+        title: lessonForm.title.trim(),
+        description: lessonForm.description.trim(),
+        videoUrl: lessonForm.videoUrl.trim(),
+        videoType: lessonForm.videoType.trim() || "youtube",
+        duration: lessonForm.duration.trim(),
+        status: lessonForm.status,
+        order: lessonForm.order === "" ? 0 : Number(lessonForm.order),
+      };
+
+      if (editingLessonId) {
+        await updateTrainingLesson(editingLessonId, payload);
+        setLessonMessage("Lesson updated.");
+      } else {
+        await createTrainingLesson(payload);
+        setLessonMessage("Lesson created.");
+      }
+
+      resetLessonForm();
+      await fetchLessons();
+    } catch (error) {
+      console.error("Failed to save lesson:", error);
+      setLessonMessage("Failed to save lesson.");
+    } finally {
+      setSavingLesson(false);
+    }
+  };
+
   const renderProgramPanel = () => (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
@@ -499,10 +647,34 @@ export default function AdvancedTrainingBuilderRoute() {
     </section>
   );
 
+  const renderLessonsPanel = () => (
+    <section className="grid gap-6 lg:grid-cols-[420px_1fr]">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mb-5 flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 ring-1 ring-blue-100">{editingLessonId ? <Pencil size={20} /> : <Plus size={20} />}</div><div><h2 className="text-lg font-semibold text-slate-900">{editingLessonId ? "Edit Lesson" : "Add Lesson"}</h2><p className="mt-1 text-sm text-slate-500">This tab handles basic lesson information. Materials and quizzes stay in the legacy editor for now.</p></div></div>
+        <form onSubmit={handleLessonSave} className="space-y-4">
+          <div><label className="mb-2 block text-sm font-medium text-slate-700">Parent Course</label><select name="courseId" value={lessonForm.courseId} onChange={handleLessonChange} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"><option value="">Select course</option>{sortedCourses.map((course) => <option key={course.id} value={course.id}>{getSectionTitle(course.levelId)} / {course.title}</option>)}</select><p className="mt-1 text-xs text-slate-500">Create courses first if this list is empty.</p></div>
+          <div><label className="mb-2 block text-sm font-medium text-slate-700">Lesson Title</label><input name="title" value={lessonForm.title} onChange={handleLessonChange} placeholder="Lesson 1 · Overview" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" /></div>
+          <div><label className="mb-2 block text-sm font-medium text-slate-700">Status</label><select name="status" value={lessonForm.status} onChange={handleLessonChange} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50">{statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</select></div>
+          <div><label className="mb-2 block text-sm font-medium text-slate-700">Lesson Order</label><input name="order" type="number" value={lessonForm.order} onChange={handleLessonChange} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" /></div>
+          <div><label className="mb-2 block text-sm font-medium text-slate-700">Duration</label><input name="duration" value={lessonForm.duration} onChange={handleLessonChange} placeholder="12 min" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" /></div>
+          <div><label className="mb-2 block text-sm font-medium text-slate-700">Video Type</label><input name="videoType" value={lessonForm.videoType} onChange={handleLessonChange} placeholder="youtube" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" /></div>
+          <div><label className="mb-2 block text-sm font-medium text-slate-700">Video URL</label><input name="videoUrl" value={lessonForm.videoUrl} onChange={handleLessonChange} placeholder="https://..." className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" /></div>
+          <div><label className="mb-2 block text-sm font-medium text-slate-700">Description</label><textarea name="description" value={lessonForm.description} onChange={handleLessonChange} rows={4} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" /></div>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4"><div className="text-sm text-slate-500">{lessonMessage || "Create or update lesson basic information here."}</div><div className="flex gap-2">{editingLessonId && <button type="button" onClick={resetLessonForm} className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200">Cancel</button>}<button type="submit" disabled={savingLesson} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:bg-slate-400"><Save size={16} /> {savingLesson ? "Saving..." : editingLessonId ? "Update Lesson" : "Create Lesson"}</button></div></div>
+        </form>
+      </div>
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold text-slate-900">Lesson List</h2><p className="mt-1 text-sm text-slate-500">Showing {lessons.length} lessons by Section order, Course order, then Lesson order.</p></div><button type="button" onClick={fetchLessons} className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200">Refresh</button></div>
+        {loadingLessons ? <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">Loading lessons...</div> : sortedLessons.length > 0 ? <div className="space-y-3">{sortedLessons.map((lesson) => <div key={lesson.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">{programTag}</span><span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">{getSectionTitle(getCourseSectionId(lesson.courseId))}</span><span className="rounded-full bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700">{getCourseTitle(lesson.courseId)}</span><span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">Lesson Order {lesson.order || 0}</span><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(lesson.status)}`}>{lesson.status}</span></div><h3 className="mt-3 font-semibold text-slate-900">{lesson.title}</h3><p className="mt-1 text-sm leading-6 text-slate-500">{lesson.description || "No description."}</p><p className="mt-2 text-xs text-slate-500">{lesson.duration || "No duration"} · {lesson.videoType || "video"}</p><p className="mt-2 font-mono text-xs text-slate-400">{lesson.id}</p></div><button type="button" onClick={() => startEditLesson(lesson)} className="inline-flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"><Pencil size={15} /> Edit</button></div></div>)}</div> : <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">No lessons yet. Create the first lesson from the form on the left.</div>}
+      </div>
+    </section>
+  );
+
   const renderActiveTabPanel = () => {
     if (activeTab === "program") return renderProgramPanel();
     if (activeTab === "sections") return renderSectionsPanel();
     if (activeTab === "courses") return renderCoursesPanel();
+    if (activeTab === "lessons") return renderLessonsPanel();
 
     return <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-slate-500 shadow-sm"><h2 className="text-lg font-semibold text-slate-900">{activeStep.shortTitle}</h2><p className="mt-2 max-w-2xl text-sm leading-6">{activeStep.detail}</p><p className="mt-4 text-sm">Use the legacy advanced editor below until this tab is migrated.</p></section>;
   };
@@ -511,13 +683,13 @@ export default function AdvancedTrainingBuilderRoute() {
     <div className="space-y-6">
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"><div className="bg-gradient-to-r from-slate-950 to-indigo-800 p-6 text-white"><div className="flex flex-wrap items-start justify-between gap-4"><div><div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/15">Advanced Builder</div><h1 className="mt-3 text-2xl font-bold tracking-tight">Advanced Training Builder</h1><p className="mt-1 max-w-2xl text-sm leading-6 text-white/75">Build and edit the full training hierarchy: sections, courses, lessons, materials, and quizzes.</p><p className="mt-2 font-mono text-xs text-white/55">Program ID: {programId}</p></div><div className="flex flex-wrap gap-2"><Link href={`/admin/training/${programId}/overview`} className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold text-white ring-1 ring-white/15 transition hover:bg-white/15"><ArrowLeft size={16} /> Manage</Link><Link href={`/training/${programId}`} className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"><Eye size={16} /> Preview</Link></div></div></div></div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-4"><div><div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-100"><Route size={14} /> Builder Workflow</div><h2 className="mt-3 text-lg font-semibold text-slate-900">Build from top to bottom</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">Program, Sections, and Courses are now live in the new builder. Remaining tabs still use the legacy editor below.</p></div><div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100"><CheckCircle2 size={15} /> Program + Sections + Courses migrated</div></div><div className="mt-5 grid gap-3 md:grid-cols-5">{workflowSteps.map((step) => { const Icon = step.icon; const isActive = activeTab === step.id; return <button type="button" key={step.id} onClick={() => setActiveTab(step.id)} className={`rounded-2xl border p-4 text-left transition ${isActive ? "border-blue-200 bg-blue-50 shadow-sm ring-2 ring-blue-100" : "border-slate-200 bg-slate-50 hover:border-blue-100 hover:bg-blue-50/50"}`}><div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ${isActive ? "text-blue-700 ring-blue-100" : "text-slate-500 ring-slate-100"}`}><Icon size={17} /></div><div className="text-sm font-semibold text-slate-900">{step.title}</div><p className="mt-1 text-xs leading-5 text-slate-500">{step.description}</p></button>; })}</div></section>
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-4"><div><div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-100"><Route size={14} /> Builder Workflow</div><h2 className="mt-3 text-lg font-semibold text-slate-900">Build from top to bottom</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">Program, Sections, Courses, and Lessons are now live in the new builder. Remaining advanced settings still use the legacy editor below.</p></div><div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100"><CheckCircle2 size={15} /> Program + Sections + Courses + Lessons migrated</div></div><div className="mt-5 grid gap-3 md:grid-cols-5">{workflowSteps.map((step) => { const Icon = step.icon; const isActive = activeTab === step.id; return <button type="button" key={step.id} onClick={() => setActiveTab(step.id)} className={`rounded-2xl border p-4 text-left transition ${isActive ? "border-blue-200 bg-blue-50 shadow-sm ring-2 ring-blue-100" : "border-slate-200 bg-slate-50 hover:border-blue-100 hover:bg-blue-50/50"}`}><div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ${isActive ? "text-blue-700 ring-blue-100" : "text-slate-500 ring-slate-100"}`}><Icon size={17} /></div><div className="text-sm font-semibold text-slate-900">{step.title}</div><p className="mt-1 text-xs leading-5 text-slate-500">{step.description}</p></button>; })}</div></section>
 
       <section className="rounded-2xl border border-blue-100 bg-blue-50 p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-4"><div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-blue-700 shadow-sm ring-1 ring-blue-100"><ActiveIcon size={20} /></div><div><div className="text-xs font-semibold uppercase tracking-wide text-blue-700">Active tab · {activeStep.status}</div><h2 className="mt-1 text-lg font-semibold text-slate-900">{activeStep.shortTitle}</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">{activeStep.detail}</p></div></div><div className="rounded-xl bg-white px-3 py-2 font-mono text-xs text-slate-500 ring-1 ring-blue-100">/builder#{activeTab}</div></div></section>
 
       {renderActiveTabPanel()}
 
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm"><div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><div className="text-sm font-semibold text-slate-700">Legacy advanced editor area</div><p className="mt-1 text-xs text-slate-500">Full create and edit controls remain here until lessons and structure tabs are migrated.</p></div></div><BuilderPage /></div>
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm"><div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><div className="text-sm font-semibold text-slate-700">Legacy advanced editor area</div><p className="mt-1 text-xs text-slate-500">Advanced controls remain here until materials, quiz, and structure tabs are migrated.</p></div></div><BuilderPage /></div>
     </div>
   );
 }
