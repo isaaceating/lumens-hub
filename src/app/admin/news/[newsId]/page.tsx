@@ -261,6 +261,9 @@ function EditNewsContent() {
                   <option value="published">published</option>
                   <option value="archived">archived</option>
                 </select>
+                <p className="mt-1 text-xs text-slate-400">
+                  Choose archived instead of permanently removing older announcements.
+                </p>
               </div>
 
               <div>
