@@ -38,11 +38,13 @@ export default function EmbeddedModuleFrame({
   const [isLoading, setIsLoading] = useState(true);
   const [isSlowLoading, setIsSlowLoading] = useState(false);
   const [frameHeight, setFrameHeight] = useState(height);
+  const [hasAutoResized, setHasAutoResized] = useState(false);
 
   useEffect(() => {
     setIsLoading(true);
     setIsSlowLoading(false);
     setFrameHeight(height);
+    setHasAutoResized(false);
 
     const slowLoadingTimer = window.setTimeout(() => {
       setIsSlowLoading(true);
@@ -71,6 +73,7 @@ export default function EmbeddedModuleFrame({
       );
 
       setFrameHeight(`${safeHeight}px`);
+      setHasAutoResized(true);
     };
 
     window.addEventListener("message", handleMessage);
@@ -122,7 +125,7 @@ export default function EmbeddedModuleFrame({
         title={title}
         className="block w-full border-0 bg-white"
         style={{ height: frameHeight }}
-        scrolling={autoResize ? "no" : "auto"}
+        scrolling={autoResize && hasAutoResized ? "no" : "auto"}
         allowFullScreen
         loading="eager"
         onLoad={() => {
