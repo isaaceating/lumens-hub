@@ -265,7 +265,9 @@ export default function ModuleRendererPage() {
     const autoResize = isGoogleAppsScriptEmbed(module);
 
     return (
-      <div className="-m-8 bg-white">
+      <div
+        className={autoResize ? "-m-8 bg-white" : "-m-8 h-[calc(100vh-64px)] bg-white"}
+      >
         <EmbeddedModuleFrame
           title={module.name || "Embedded Module"}
           src={embeddedSrc}
