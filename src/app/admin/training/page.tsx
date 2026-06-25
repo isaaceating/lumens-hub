@@ -331,8 +331,11 @@ function AdminTrainingContent() {
 
                   <td className="px-5 py-4 align-top">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link href={`/admin/training/${program.id}`} className="inline-flex rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700">
+                      <Link href={`/admin/training/${program.id}/overview`} className="inline-flex rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700">
                         Manage
+                      </Link>
+                      <Link href={`/admin/training/${program.id}`} className="inline-flex rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100">
+                        Builder
                       </Link>
                       <Link href={`/training/${program.id}`} className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200">
                         <Eye size={13} /> Preview
