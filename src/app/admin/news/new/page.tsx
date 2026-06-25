@@ -4,6 +4,15 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Timestamp } from "firebase/firestore";
+import {
+  ArrowLeft,
+  CalendarClock,
+  Eye,
+  FileText,
+  Megaphone,
+  Save,
+  Settings2,
+} from "lucide-react";
 import AdminGuard from "@/app/components/AdminGuard";
 import { createNews, NewsStatus } from "@/lib/news";
 
@@ -14,6 +23,12 @@ const toDateTimeLocalValue = (date: Date) => {
 
 const inputToTimestamp = (value: string) => {
   return Timestamp.fromDate(new Date(value));
+};
+
+const getStatusBadgeClass = (status: NewsStatus) => {
+  if (status === "published") return "bg-emerald-100 text-emerald-700";
+  if (status === "archived") return "bg-amber-100 text-amber-700";
+  return "bg-slate-100 text-slate-600";
 };
 
 function NewNewsContent() {
@@ -52,6 +67,11 @@ function NewNewsContent() {
       return;
     }
 
+    if (!publishedAt) {
+      alert("Published At is required.");
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -75,133 +95,202 @@ function NewNewsContent() {
   };
 
   return (
-    <form onSubmit={handleCreate} className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <Link
-            href="/admin/news"
-            className="text-sm font-medium text-blue-700 hover:underline"
-          >
-            Back to News Management
-          </Link>
+    <form onSubmit={handleCreate} className="space-y-6 pb-24">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link
+          href="/admin/news"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+        >
+          <ArrowLeft size={16} /> Back to News
+        </Link>
 
-          <h1 className="mt-3 text-2xl font-bold text-slate-900">
-            Create News
-          </h1>
-          <p className="mt-2 text-slate-600">
-            Create a homepage announcement.
-          </p>
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadgeClass(status)}`}>
+          {status}
+        </span>
+      </div>
+
+      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-slate-900 to-blue-800 p-6 text-white">
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/20">
+              <Megaphone size={26} />
+            </div>
+
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Create News</h1>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-white/75">
+                Create a homepage announcement and choose its publishing status.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="grid gap-5">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Title
-            </label>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="PDM Training content has been updated"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Summary
-            </label>
-            <input
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-              placeholder="Short summary shown on the news card."
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Content
-            </label>
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={8}
-              placeholder="Full announcement content..."
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-4">
+      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex items-start gap-3">
+            <FileText className="mt-0.5 text-blue-600" size={20} />
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Audience
-              </label>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Announcement Content
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Write the title, summary, and full message.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-5">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Title</label>
               <input
-                value={audience}
-                onChange={(e) => setAudience(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="PDM Training content has been updated"
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Status
-              </label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as NewsStatus)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-              >
-                <option value="draft">draft</option>
-                <option value="published">published</option>
-                <option value="archived">archived</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Published At
-              </label>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Summary</label>
               <input
-                type="datetime-local"
-                value={publishedAt}
-                onChange={(e) => setPublishedAt(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                placeholder="Short summary shown on the news card."
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                Order
-              </label>
-              <input
-                type="number"
-                value={order}
-                onChange={(e) => setOrder(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              <label className="mb-2 block text-sm font-medium text-slate-700">Content</label>
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                rows={12}
+                placeholder="Full announcement content..."
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
               />
             </div>
+          </div>
+        </section>
+
+        <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-start gap-3">
+              <Settings2 className="mt-0.5 text-blue-600" size={20} />
+              <div>
+                <h2 className="font-semibold text-slate-900">Publish Settings</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Control visibility, order, and audience.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Status</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as NewsStatus)}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                >
+                  <option value="draft">draft</option>
+                  <option value="published">published</option>
+                  <option value="archived">archived</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Audience</label>
+                <input
+                  value={audience}
+                  onChange={(e) => setAudience(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Published At</label>
+                <input
+                  type="datetime-local"
+                  value={publishedAt}
+                  onChange={(e) => setPublishedAt(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Homepage Order</label>
+                <input
+                  type="number"
+                  value={order}
+                  onChange={(e) => setOrder(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                />
+                <p className="mt-1 text-xs text-slate-400">
+                  Smaller numbers appear earlier in the carousel.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-start gap-3">
+              <Eye className="mt-0.5 text-blue-600" size={20} />
+              <div>
+                <h2 className="font-semibold text-slate-900">Preview</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Approximate homepage card preview.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusBadgeClass(status)}`}>
+                  {status}
+                </span>
+                <span className="text-xs text-slate-500">Order {Number(order) || 9999}</span>
+              </div>
+
+              <h3 className="mt-4 line-clamp-2 text-lg font-bold text-slate-900">
+                {title.trim() || "Untitled announcement"}
+              </h3>
+              <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600">
+                {summary.trim() || "Summary preview will appear here."}
+              </p>
+
+              <div className="mt-4 flex items-center gap-2 text-xs text-slate-500">
+                <CalendarClock size={14} /> {publishedAt || "No publish date"}
+              </div>
+            </div>
+          </section>
+        </aside>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
+          <div className="text-sm text-slate-500">
+            Creating <span className="font-semibold text-slate-900">{title.trim() || "Untitled news"}</span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Link
+              href="/admin/news"
+              className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200"
+            >
+              Cancel
+            </Link>
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:bg-slate-400"
+            >
+              <Save size={16} /> {saving ? "Creating..." : "Create News"}
+            </button>
           </div>
         </div>
-      </section>
-
-      <div className="flex flex-wrap justify-end gap-3">
-        <Link
-          href="/admin/news"
-          className="rounded-lg bg-slate-100 px-5 py-2 text-sm text-slate-700 hover:bg-slate-200"
-        >
-          Cancel
-        </Link>
-
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-slate-400"
-        >
-          {saving ? "Creating..." : "Create News"}
-        </button>
       </div>
     </form>
   );
