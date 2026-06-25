@@ -46,6 +46,20 @@ const getUsageRole = (profile: any) => {
   );
 };
 
+const isGoogleAppsScriptEmbed = (module: any) => {
+  const embedUrl = String(module?.embedUrl || "");
+
+  return embedUrl.includes("script.google.com");
+};
+
+const getEmbeddedInitialHeight = (module: any) => {
+  if (isGoogleAppsScriptEmbed(module)) {
+    return `${Number(module?.embedHeight) || 1200}px`;
+  }
+
+  return "calc(100vh - 64px)";
+};
+
 const buildEmbeddedModuleSrc = ({
   src,
   module,
@@ -248,12 +262,15 @@ export default function ModuleRendererPage() {
       profile,
     });
 
+    const autoResize = isGoogleAppsScriptEmbed(module);
+
     return (
-      <div className="-m-8 h-[calc(100vh-64px)] bg-white">
+      <div className="-m-8 bg-white">
         <EmbeddedModuleFrame
           title={module.name || "Embedded Module"}
           src={embeddedSrc}
-          height="calc(100vh - 64px)"
+          height={getEmbeddedInitialHeight(module)}
+          autoResize={autoResize}
         />
       </div>
     );
@@ -263,15 +280,8 @@ export default function ModuleRendererPage() {
     <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
       <h1 className="text-2xl font-bold text-slate-900">{module.name}</h1>
       <p className="mt-2 text-slate-600">
-        This is a native Lumens Portal resource.
+        This module type is not supported yet.
       </p>
-
-      <Link
-        href={module.href}
-        className="mt-6 inline-block rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-      >
-        Open Resource
-      </Link>
     </div>
   );
 }
