@@ -57,7 +57,7 @@ const workflowSteps: { id: BuilderTabId; title: string; shortTitle: string; desc
   { id: "sections", title: "2. Sections", shortTitle: "Sections", description: "Create levels, chapters, or phases.", detail: "Sections define the top layer of the learning structure. You can add and edit section metadata here.", status: "Live", icon: Layers3 },
   { id: "courses", title: "3. Courses", shortTitle: "Courses", description: "Group lessons under each section.", detail: "Courses organize lesson groups and can belong to a section. You can add and edit course metadata here.", status: "Live", icon: BookOpenCheck },
   { id: "lessons", title: "4. Lessons", shortTitle: "Lessons", description: "Add video, duration, and basic info.", detail: "Lesson basic information is now editable here. Materials and quiz settings remain in the legacy editor until the next migration step.", status: "Live", icon: Video },
-  { id: "structure", title: "5. Structure", shortTitle: "Structure", description: "Review full hierarchy.", detail: "Structure shows the full hierarchy from program to sections, courses, and lessons.", status: "Live", icon: ListChecks },
+  { id: "structure", title: "5. Structure", shortTitle: "Structure", description: "Review full hierarchy.", detail: "Structure shows the full hierarchy from program to sections, courses, and lessons, including draft, published, and archived items.", status: "Live", icon: ListChecks },
 ];
 
 const getStatusClass = (status: TrainingStatus) => {
@@ -153,55 +153,35 @@ export default function AdvancedTrainingBuilderRoute() {
     try {
       const program = await getTrainingProgramById(programId);
       if (program) setProgramForm({ title: program.title || "", description: program.description || "", ownerDepartment: program.ownerDepartment || "", status: program.status || "draft", order: program.order ?? 1 });
-    } catch (error) {
-      console.error("Failed to load program settings:", error);
-      setProgramMessage("Failed to load program settings.");
-    } finally { setLoadingProgram(false); }
+    } catch (error) { console.error("Failed to load program settings:", error); setProgramMessage("Failed to load program settings."); }
+    finally { setLoadingProgram(false); }
   };
 
   const fetchSections = async () => {
     if (!programId) return;
     setLoadingSections(true);
-    try {
-      const data = await getTrainingLevelsByProgram(programId);
-      setSections(data);
-      if (!editingSectionId) setSectionForm((prev) => ({ ...prev, order: data.length + 1 }));
-    } catch (error) {
-      console.error("Failed to load sections:", error);
-      setSectionMessage("Failed to load sections.");
-    } finally { setLoadingSections(false); }
+    try { const data = await getTrainingLevelsByProgram(programId); setSections(data); if (!editingSectionId) setSectionForm((prev) => ({ ...prev, order: data.length + 1 })); }
+    catch (error) { console.error("Failed to load sections:", error); setSectionMessage("Failed to load sections."); }
+    finally { setLoadingSections(false); }
   };
 
   const fetchCourses = async () => {
     if (!programId) return;
     setLoadingCourses(true);
-    try {
-      const data = await getTrainingCoursesByProgram(programId);
-      setCourses(data);
-      if (!editingCourseId) setCourseForm((prev) => ({ ...prev, order: data.length + 1 }));
-    } catch (error) {
-      console.error("Failed to load courses:", error);
-      setCourseMessage("Failed to load courses.");
-    } finally { setLoadingCourses(false); }
+    try { const data = await getTrainingCoursesByProgram(programId); setCourses(data); if (!editingCourseId) setCourseForm((prev) => ({ ...prev, order: data.length + 1 })); }
+    catch (error) { console.error("Failed to load courses:", error); setCourseMessage("Failed to load courses."); }
+    finally { setLoadingCourses(false); }
   };
 
   const fetchLessons = async () => {
     if (!programId) return;
     setLoadingLessons(true);
-    try {
-      const data = await getTrainingLessonsByProgram(programId);
-      setLessons(data);
-      if (!editingLessonId) setLessonForm((prev) => ({ ...prev, order: data.length + 1 }));
-    } catch (error) {
-      console.error("Failed to load lessons:", error);
-      setLessonMessage("Failed to load lessons.");
-    } finally { setLoadingLessons(false); }
+    try { const data = await getTrainingLessonsByProgram(programId); setLessons(data); if (!editingLessonId) setLessonForm((prev) => ({ ...prev, order: data.length + 1 })); }
+    catch (error) { console.error("Failed to load lessons:", error); setLessonMessage("Failed to load lessons."); }
+    finally { setLoadingLessons(false); }
   };
 
-  const refreshAll = async () => {
-    await Promise.all([fetchProgram(), fetchSections(), fetchCourses(), fetchLessons()]);
-  };
-
+  const refreshAll = async () => { await Promise.all([fetchProgram(), fetchSections(), fetchCourses(), fetchLessons()]); };
   useEffect(() => { refreshAll(); }, [programId]);
 
   const handleProgramChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => { const { name, value } = event.target; setProgramMessage(""); setProgramForm((prev) => ({ ...prev, [name]: name === "order" ? (value === "" ? "" : Number(value)) : value })); };
@@ -272,7 +252,7 @@ export default function AdvancedTrainingBuilderRoute() {
   );
 
   const renderStructurePanel = () => (
-    <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold text-slate-900">Structure Overview</h2><p className="mt-1 text-sm text-slate-500">Review the full hierarchy by Section, Course, and Lesson order.</p></div><button type="button" onClick={refreshAll} className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200">Refresh</button></div><div className="grid gap-3 md:grid-cols-4"><div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="text-xs font-semibold text-slate-500">Program</div><div className="mt-2 font-semibold text-slate-900">{programTag}</div></div><div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="text-xs font-semibold text-slate-500">Sections</div><div className="mt-2 text-2xl font-bold text-slate-900">{sections.length}</div></div><div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="text-xs font-semibold text-slate-500">Courses</div><div className="mt-2 text-2xl font-bold text-slate-900">{courses.length}</div></div><div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="text-xs font-semibold text-slate-500">Lessons</div><div className="mt-2 text-2xl font-bold text-slate-900">{lessons.length}</div></div></div><div className="space-y-4">{sortByOrder(sections).map((section) => { const sectionCourses = sortByOrder(coursesBySection.get(section.id) || []); return <div key={section.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">{programTag}</span><span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">Section Order {section.order || 0}</span><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(section.status)}`}>{section.status}</span></div><h3 className="mt-3 font-semibold text-slate-900">{section.title}</h3><div className="mt-4 space-y-3">{sectionCourses.length > 0 ? sectionCourses.map((course) => { const courseLessons = sortByOrder(lessonsByCourse.get(course.id) || []); return <div key={course.id} className="rounded-2xl border border-slate-200 bg-white p-4"><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">{section.title}</span><span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">Course Order {course.order || 0}</span><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(course.status)}`}>{course.status}</span></div><h4 className="mt-3 font-semibold text-slate-900">{course.title}</h4><div className="mt-3 space-y-2">{courseLessons.length > 0 ? courseLessons.map((lesson) => <div key={lesson.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700">{course.title}</span><span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">Lesson Order {lesson.order || 0}</span><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(lesson.status)}`}>{lesson.status}</span></div><div className="mt-2 font-medium text-slate-900">{lesson.title}</div></div>) : <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">No lessons in this course.</div>}</div></div>; }) : <div className="rounded-xl border border-dashed border-slate-300 bg-white p-3 text-sm text-slate-500">No courses in this section.</div>}</div></div>; })}{sections.length === 0 && <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">No sections yet.</div>}</div></section>
+    <section className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold text-slate-900">Learning Path Preview</h2><p className="mt-1 text-sm text-slate-500">Manager preview includes draft, published, and archived items. The public learning path only shows published content.</p></div><button type="button" onClick={refreshAll} className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200">Refresh</button></div><div className="grid gap-3 md:grid-cols-4"><div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="text-xs font-semibold text-slate-500">Program</div><div className="mt-2 font-semibold text-slate-900">{programTag}</div></div><div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="text-xs font-semibold text-slate-500">Sections</div><div className="mt-2 text-2xl font-bold text-slate-900">{sections.length}</div></div><div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="text-xs font-semibold text-slate-500">Courses</div><div className="mt-2 text-2xl font-bold text-slate-900">{courses.length}</div></div><div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="text-xs font-semibold text-slate-500">Lessons</div><div className="mt-2 text-2xl font-bold text-slate-900">{lessons.length}</div></div></div><div className="space-y-5">{sortByOrder(sections).map((section, sectionIndex) => { const sectionCourses = sortByOrder(coursesBySection.get(section.id) || []); return <div key={section.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div className="flex items-start gap-4"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-sm font-bold text-white">{sectionIndex + 1}</div><div><h3 className="text-lg font-semibold text-slate-900">{section.title}</h3><p className="mt-1 text-sm leading-6 text-slate-500">{section.description || "No section description."}</p><p className="mt-2 text-xs font-semibold text-slate-400">Section order {section.order || 0}</p></div></div><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(section.status)}`}>{section.status}</span></div><div className="mt-5 space-y-3 border-l border-slate-200 pl-5">{sectionCourses.length > 0 ? sectionCourses.map((course) => { const courseLessons = sortByOrder(lessonsByCourse.get(course.id) || []); return <div key={course.id} className="rounded-2xl border border-slate-200 bg-white p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><h4 className="font-semibold text-slate-900">{course.title}</h4><p className="mt-1 text-sm leading-6 text-slate-500">{course.description || "No course description."}</p><p className="mt-2 text-xs font-semibold text-slate-400">Course order {course.order || 0}</p></div><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(course.status)}`}>{course.status}</span></div><div className="mt-3 space-y-2">{courseLessons.length > 0 ? courseLessons.map((lesson) => <div key={lesson.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"><div><div className="font-medium text-slate-900">{lesson.title}</div><div className="mt-1 text-xs text-slate-500">Lesson order {lesson.order || 0} · {lesson.duration || "No duration"} · {lesson.videoType || "video"}</div></div><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(lesson.status)}`}>{lesson.status}</span></div>) : <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-500">No lessons in this course.</div>}</div></div>; }) : <div className="rounded-xl border border-dashed border-slate-300 bg-white p-3 text-sm text-slate-500">No courses in this section.</div>}</div></div>; })}{sections.length === 0 && <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">No sections yet.</div>}</div></section>
   );
 
   const renderActiveTabPanel = () => {
