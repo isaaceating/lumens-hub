@@ -3,6 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import {
+  ArrowLeft,
+  BadgeCheck,
+  Blocks,
+  CheckCircle2,
+  ClipboardList,
+  Eye,
+  Home,
+  KeyRound,
+  LayoutDashboard,
+  Save,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 import AdminGuard from "@/app/components/AdminGuard";
 import { getUserById, updateUserProfile } from "@/lib/users";
 import { modules as staticModules } from "@/app/config/modules";
@@ -37,6 +51,8 @@ type DashboardSectionKey =
   | "workspaces"
   | "resources"
   | "bookmarks";
+
+type DetailTab = "profile" | "dashboard" | "modules" | "audit";
 
 const dashboardSectionOptions: {
   key: DashboardSectionKey;
@@ -90,6 +106,10 @@ const getEffectiveJobRoleForDisplay = (
   return jobRole || "Other";
 };
 
+const getDisplayName = (user: any, editedName: string) => {
+  return editedName.trim() || user?.googleName || user?.name || "No Name";
+};
+
 function UserDetailContent() {
   const params = useParams();
   const uid = params.uid as string;
@@ -115,6 +135,8 @@ function UserDetailContent() {
   >(defaultDashboardSections);
 
   const [moduleOptions, setModuleOptions] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<DetailTab>("profile");
+  const [moduleQuery, setModuleQuery] = useState("");
   const [loadingUser, setLoadingUser] = useState(true);
   const [loadingModules, setLoadingModules] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -264,11 +286,13 @@ function UserDetailContent() {
 
     if (!trimmedName) {
       alert("Name is required.");
+      setActiveTab("profile");
       return;
     }
 
     if (jobRole === "Other" && !customJobRole.trim()) {
       alert("Please enter a custom job role when Job Role is Other.");
+      setActiveTab("profile");
       return;
     }
 
@@ -313,6 +337,16 @@ function UserDetailContent() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const moduleMatchesQuery = (module: any) => {
+    const q = moduleQuery.trim().toLowerCase();
+    if (!q) return true;
+
+    return [module.id, module.name, module.description]
+      .map((item) => String(item || "").toLowerCase())
+      .join(" ")
+      .includes(q);
   };
 
   const renderModuleCheckbox = (module: any) => {
@@ -371,416 +405,613 @@ function UserDetailContent() {
     jobRole,
     customJobRole,
   );
+  const displayName = getDisplayName(user, name);
+  const filteredWorkspaceModules = workspaceModules.filter(moduleMatchesQuery);
+  const filteredResourceModules = resourceModules.filter(moduleMatchesQuery);
 
-  return (
-    <div>
-      <div className="mb-8">
-        <Link
-          href="/admin/users"
-          className="mb-4 inline-block text-sm font-medium text-blue-700 hover:underline"
-        >
-          ← Back to Users
-        </Link>
+  const tabs: {
+    key: DetailTab;
+    label: string;
+    description: string;
+    icon: React.ReactNode;
+  }[] = [
+    {
+      key: "profile",
+      label: "Profile",
+      description: "Identity, role, region, and department.",
+      icon: <UserRound size={16} />,
+    },
+    {
+      key: "dashboard",
+      label: "Dashboard",
+      description: "Homepage sections visible to this user.",
+      icon: <LayoutDashboard size={16} />,
+    },
+    {
+      key: "modules",
+      label: "Modules",
+      description: "Workspace and official resource access.",
+      icon: <Blocks size={16} />,
+    },
+    {
+      key: "audit",
+      label: "Audit",
+      description: "Knowledge Center tracking settings.",
+      icon: <ClipboardList size={16} />,
+    },
+  ];
 
-        <h1 className="text-2xl font-bold text-slate-900">User Detail</h1>
-        <p className="mt-2 text-slate-600">
-          Manage user profile, portal permission, audit settings, dashboard
-          sections, and module access.
-        </p>
-      </div>
-
-      {loading ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-6 text-slate-500">
-          Loading user...
-        </div>
-      ) : !user ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700">
-          User not found.
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900">
+  const renderProfileTab = () => (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mb-5 flex items-start gap-3">
+          <UserRound className="mt-1 text-blue-600" size={20} />
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
               Basic Information
             </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Set the display name and review account identity.
+            </p>
+          </div>
+        </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Name
-                </label>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Name
+            </label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+              placeholder="Display name"
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              Used as the display name inside Lumens Portal and audit logs.
+            </p>
+          </div>
+
+          <div>
+            <div className="text-sm text-slate-500">Email</div>
+            <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900">
+              {user.email || "No Email"}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-sm text-slate-500">Google Name</div>
+            <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900">
+              {user.googleName || user.name || "No Google Name"}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-sm text-slate-500">UID</div>
+            <div className="mt-2 break-all rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-xs text-slate-700">
+              {uid}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mb-5 flex items-start gap-3">
+          <ShieldCheck className="mt-1 text-blue-600" size={20} />
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Profile & Permission
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Control Portal role and the profile fields used in audit logs.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-5 md:grid-cols-2">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              System Role
+            </label>
+            <select
+              value={systemRole}
+              onChange={(e) => setSystemRole(e.target.value)}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+            >
+              {SYSTEM_ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-400">
+              Controls Portal admin permission. This is not the Knowledge Center
+              usage role.
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Account Type
+            </label>
+            <select
+              value={accountType}
+              onChange={(e) => handleAccountTypeChange(e.target.value)}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+            >
+              {ACCOUNT_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-400">
+              Non-Lumens accounts are grouped under VIP Partner department.
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Region
+            </label>
+            <select
+              value={region}
+              onChange={(e) => setRegion(e.target.value)}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+            >
+              {REGIONS.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Department
+            </label>
+
+            {accountType === "Lumens" ? (
+              <select
+                value={department === "VIP Partner" ? "SAL" : department}
+                onChange={(e) => setDepartment(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+              >
+                {LUMENS_DEPARTMENTS.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                VIP Partner
+              </div>
+            )}
+
+            <p className="mt-1 text-xs text-slate-400">
+              Saved value will be: {effectiveDepartment}
+            </p>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Job Role
+            </label>
+            <div className="grid gap-3 md:grid-cols-2">
+              <select
+                value={jobRole}
+                onChange={(e) => setJobRole(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+              >
+                {JOB_ROLES.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+
+              {jobRole === "Other" && (
                 <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                  placeholder="Display name"
+                  value={customJobRole}
+                  onChange={(e) => setCustomJobRole(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                  placeholder="Enter custom job role"
                 />
-                <p className="mt-1 text-xs text-slate-400">
-                  Used as the display name inside Lumens Portal and audit logs.
-                </p>
-              </div>
-
-              <div>
-                <div className="text-sm text-slate-500">Email</div>
-                <div className="mt-2 text-slate-900">
-                  {user.email || "No Email"}
-                </div>
-              </div>
-
-              <div>
-                <div className="text-sm text-slate-500">Google Name</div>
-                <div className="mt-2 text-slate-900">
-                  {user.googleName || user.name || "No Google Name"}
-                </div>
-              </div>
-
-              <div>
-                <div className="text-sm text-slate-500">UID</div>
-                <div className="mt-2 break-all font-mono text-xs text-slate-700">
-                  {uid}
-                </div>
-              </div>
+              )}
             </div>
+
+            <p className="mt-1 text-xs text-slate-400">
+              Usage log userRole will be: {effectiveJobRole}
+            </p>
           </div>
+        </div>
+      </div>
+    </div>
+  );
 
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900">
-              User Profile
+  const renderDashboardTab = () => (
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <LayoutDashboard className="mt-1 text-blue-600" size={20} />
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Dashboard Sections
             </h2>
-
-            <div className="grid gap-6 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Account Type
-                </label>
-                <select
-                  value={accountType}
-                  onChange={(e) => handleAccountTypeChange(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                >
-                  {ACCOUNT_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-slate-400">
-                  Non-Lumens accounts are grouped under VIP Partner department.
-                </p>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Region
-                </label>
-                <select
-                  value={region}
-                  onChange={(e) => setRegion(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                >
-                  {REGIONS.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Department
-                </label>
-
-                {accountType === "Lumens" ? (
-                  <select
-                    value={department === "VIP Partner" ? "SAL" : department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                  >
-                    {LUMENS_DEPARTMENTS.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                    VIP Partner
-                  </div>
-                )}
-
-                <p className="mt-1 text-xs text-slate-400">
-                  Saved value: {effectiveDepartment}
-                </p>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Job Role
-                </label>
-                <select
-                  value={jobRole}
-                  onChange={(e) => setJobRole(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                >
-                  {JOB_ROLES.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-
-                {jobRole === "Other" && (
-                  <input
-                    value={customJobRole}
-                    onChange={(e) => setCustomJobRole(e.target.value)}
-                    className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                    placeholder="Enter custom job role"
-                  />
-                )}
-
-                <p className="mt-1 text-xs text-slate-400">
-                  Usage log userRole: {effectiveJobRole}
-                </p>
-              </div>
-            </div>
+            <p className="mt-1 text-sm text-slate-500">
+              Control which homepage sections this user can see.
+            </p>
           </div>
+        </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900">
-              Portal Permission
-            </h2>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={selectAllDashboardSections}
+            className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+          >
+            Select All
+          </button>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  System Role
-                </label>
-                <select
-                  value={systemRole}
-                  onChange={(e) => setSystemRole(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                >
-                  {SYSTEM_ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-slate-400">
-                  This controls Portal admin permission. It is not used as the
-                  Knowledge Center usage role.
-                </p>
-              </div>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={clearDashboardSections}
+            className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900">
-              Audit Log Settings
-            </h2>
+      <div className="mt-5 grid gap-3 md:grid-cols-2">
+        {dashboardSectionOptions.map((section) => {
+          const checked = enabledDashboardSections.includes(section.key);
 
+          return (
             <label
-              className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 text-sm transition ${
-                knowledgeCenterAuditEnabled
+              key={section.key}
+              className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${
+                checked
                   ? "border-blue-200 bg-blue-50"
                   : "border-slate-200 bg-white hover:border-blue-200"
               }`}
             >
               <input
                 type="checkbox"
-                checked={knowledgeCenterAuditEnabled}
-                onChange={(e) =>
-                  setKnowledgeCenterAuditEnabled(e.target.checked)
-                }
+                checked={checked}
+                onChange={() => toggleDashboardSection(section.key)}
                 className="mt-1 h-4 w-4"
               />
 
               <div>
                 <div className="font-medium text-slate-900">
-                  Knowledge Center Usage Audit
+                  {section.label}
                 </div>
-
-                <p className="mt-1 text-sm leading-6 text-slate-500">
-                  Track this user's Knowledge Center usage, including page view,
-                  book open, file preview, search-result preview, open in Google
-                  Drive, and download events.
-                </p>
-
-                <p className="mt-2 text-xs leading-5 text-slate-400">
-                  The usage log will use User Profile fields: Region,
-                  Department, and Job Role.
+                <p className="mt-1 text-sm text-slate-500">
+                  {section.description}
                 </p>
               </div>
             </label>
-          </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Dashboard Sections
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Control which homepage sections this user can see.
-                </p>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={selectAllDashboardSections}
-                  className="rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-700 hover:bg-slate-200"
-                >
-                  Select All
-                </button>
-
-                <button
-                  type="button"
-                  onClick={clearDashboardSections}
-                  className="rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-700 hover:bg-slate-200"
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-5 grid gap-3 md:grid-cols-2">
-              {dashboardSectionOptions.map((section) => {
-                const checked = enabledDashboardSections.includes(section.key);
-
-                return (
-                  <label
-                    key={section.key}
-                    className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${
-                      checked
-                        ? "border-blue-200 bg-blue-50"
-                        : "border-slate-200 bg-white hover:border-blue-200"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleDashboardSection(section.key)}
-                      className="mt-1 h-4 w-4"
-                    />
-
-                    <div>
-                      <div className="font-medium text-slate-900">
-                        {section.label}
-                      </div>
-                      <p className="mt-1 text-sm text-slate-500">
-                        {section.description}
-                      </p>
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Module Access
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Control which workspace and resource modules this user can
-                  access.
-                </p>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={selectAllModules}
-                  className="rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-700 hover:bg-slate-200"
-                >
-                  Select All
-                </button>
-
-                <button
-                  type="button"
-                  onClick={clearModules}
-                  className="rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-700 hover:bg-slate-200"
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-7">
-              <div>
-                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-                  Workspaces
-                </h3>
-
-                {workspaceModules.length > 0 ? (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {workspaceModules.map((module) =>
-                      renderModuleCheckbox(module),
-                    )}
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500">
-                    No workspace modules found.
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-                  Official Resources
-                </h3>
-
-                {resourceModules.length > 0 ? (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {resourceModules.map((module) =>
-                      renderModuleCheckbox(module),
-                    )}
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500">
-                    No official resource modules found.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-slate-400"
-            >
-              {saving ? "Saving..." : "Save Changes"}
-            </button>
-
-            <Link
-              href="/admin/users"
-              className="rounded-lg bg-slate-100 px-5 py-2 text-sm text-slate-700 hover:bg-slate-200"
-            >
-              Cancel
-            </Link>
-
-            {saved && (
-              <span className="text-sm font-medium text-green-600">
-                Saved successfully.
-              </span>
-            )}
-
-            <span className="text-sm text-slate-500">
-              System Role: {user.role} / Region: {user.region} / Department:{" "}
-              {user.department || "-"} / Usage Role:{" "}
-              {getEffectiveJobRoleForDisplay(
-                user.jobRole || "Other",
-                user.customJobRole || "",
-              )}
-            </span>
+  const renderModulesTab = () => (
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <Blocks className="mt-1 text-blue-600" size={20} />
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Module Access
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Control which workspace and resource modules this user can access.
+            </p>
           </div>
         </div>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={selectAllModules}
+            className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+          >
+            Select All
+          </button>
+
+          <button
+            type="button"
+            onClick={clearModules}
+            className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-5 max-w-md">
+        <input
+          value={moduleQuery}
+          onChange={(e) => setModuleQuery(e.target.value)}
+          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+          placeholder="Search modules by name, id, or description..."
+        />
+      </div>
+
+      <div className="mt-6 space-y-7">
+        <div>
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Workspaces
+          </h3>
+
+          {filteredWorkspaceModules.length > 0 ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {filteredWorkspaceModules.map((module) =>
+                renderModuleCheckbox(module),
+              )}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500">
+              No workspace modules found.
+            </div>
+          )}
+        </div>
+
+        <div>
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Official Resources
+          </h3>
+
+          {filteredResourceModules.length > 0 ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {filteredResourceModules.map((module) =>
+                renderModuleCheckbox(module),
+              )}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500">
+              No official resource modules found.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderAuditTab = () => (
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mb-5 flex items-start gap-3">
+        <ClipboardList className="mt-1 text-blue-600" size={20} />
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">
+            Audit Log Settings
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Decide whether this user's Knowledge Center usage should be tracked.
+          </p>
+        </div>
+      </div>
+
+      <label
+        className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 text-sm transition ${
+          knowledgeCenterAuditEnabled
+            ? "border-blue-200 bg-blue-50"
+            : "border-slate-200 bg-white hover:border-blue-200"
+        }`}
+      >
+        <input
+          type="checkbox"
+          checked={knowledgeCenterAuditEnabled}
+          onChange={(e) => setKnowledgeCenterAuditEnabled(e.target.checked)}
+          className="mt-1 h-4 w-4"
+        />
+
+        <div>
+          <div className="font-medium text-slate-900">
+            Knowledge Center Usage Audit
+          </div>
+
+          <p className="mt-1 text-sm leading-6 text-slate-500">
+            Track this user's Knowledge Center usage, including page view, book
+            open, file preview, search-result preview, open in Google Drive, and
+            download events.
+          </p>
+
+          <p className="mt-2 text-xs leading-5 text-slate-400">
+            The usage log will use User Profile fields: Region, Department, and
+            Job Role.
+          </p>
+        </div>
+      </label>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6 pb-24">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link
+          href="/admin/users"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+        >
+          <ArrowLeft size={16} /> Back to Users
+        </Link>
+
+        {!loading && user && (
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <span>UID:</span>
+            <span className="break-all rounded-full bg-slate-100 px-2.5 py-1 font-mono">
+              {uid}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-slate-500 shadow-sm">
+          Loading user...
+        </div>
+      ) : !user ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-red-700 shadow-sm">
+          User not found.
+        </div>
+      ) : (
+        <>
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+            <div className="bg-gradient-to-r from-slate-900 to-blue-800 p-6 text-white">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-xl font-bold ring-1 ring-white/20">
+                    {displayName.slice(0, 1).toUpperCase()}
+                  </div>
+
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight">
+                      {displayName}
+                    </h1>
+                    <p className="mt-1 text-sm text-white/75">
+                      {user.email || "No email"}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <span className="rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold ring-1 ring-white/20">
+                        {systemRole}
+                      </span>
+                      <span className="rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold ring-1 ring-white/20">
+                        {accountType}
+                      </span>
+                      <span className="rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold ring-1 ring-white/20">
+                        {region}
+                      </span>
+                      <span className="rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold ring-1 ring-white/20">
+                        {effectiveDepartment}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {saved && (
+                  <span className="inline-flex items-center gap-2 rounded-full bg-emerald-400/20 px-3 py-1.5 text-sm font-semibold text-emerald-50 ring-1 ring-emerald-200/30">
+                    <CheckCircle2 size={16} /> Saved successfully
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-0 border-t border-slate-100 md:grid-cols-4">
+              <div className="border-b border-slate-100 p-5 md:border-b-0 md:border-r">
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                  <KeyRound size={16} /> Modules
+                </div>
+                <div className="mt-2 text-2xl font-bold text-slate-900">
+                  {enabledModules.length}
+                </div>
+              </div>
+
+              <div className="border-b border-slate-100 p-5 md:border-b-0 md:border-r">
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                  <Home size={16} /> Dashboard
+                </div>
+                <div className="mt-2 text-2xl font-bold text-slate-900">
+                  {enabledDashboardSections.length}
+                </div>
+              </div>
+
+              <div className="border-b border-slate-100 p-5 md:border-b-0 md:border-r">
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                  <Eye size={16} /> Audit
+                </div>
+                <div className="mt-2 text-2xl font-bold text-slate-900">
+                  {knowledgeCenterAuditEnabled ? "On" : "Off"}
+                </div>
+              </div>
+
+              <div className="p-5">
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                  <BadgeCheck size={16} /> Usage Role
+                </div>
+                <div className="mt-2 truncate text-2xl font-bold text-slate-900">
+                  {effectiveJobRole}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
+            <div className="lg:sticky lg:top-24 lg:self-start">
+              <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+                {tabs.map((tab) => {
+                  const active = activeTab === tab.key;
+
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setActiveTab(tab.key)}
+                      className={`mb-1 flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition last:mb-0 ${
+                        active
+                          ? "bg-blue-50 text-blue-700 ring-1 ring-blue-100"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      }`}
+                    >
+                      <span className="mt-0.5">{tab.icon}</span>
+                      <span>
+                        <span className="block text-sm font-semibold">
+                          {tab.label}
+                        </span>
+                        <span className="mt-0.5 block text-xs leading-5 opacity-75">
+                          {tab.description}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              {activeTab === "profile" && renderProfileTab()}
+              {activeTab === "dashboard" && renderDashboardTab()}
+              {activeTab === "modules" && renderModulesTab()}
+              {activeTab === "audit" && renderAuditTab()}
+            </div>
+          </div>
+
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur">
+            <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
+              <div className="text-sm text-slate-500">
+                Managing <span className="font-semibold text-slate-900">{displayName}</span>
+                <span className="hidden sm:inline"> · {enabledModules.length} modules · {enabledDashboardSections.length} dashboard sections</span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {saved && (
+                  <span className="hidden text-sm font-medium text-green-600 sm:inline">
+                    Saved successfully.
+                  </span>
+                )}
+
+                <Link
+                  href="/admin/users"
+                  className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200"
+                >
+                  Cancel
+                </Link>
+
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:bg-slate-400"
+                >
+                  <Save size={16} /> {saving ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
