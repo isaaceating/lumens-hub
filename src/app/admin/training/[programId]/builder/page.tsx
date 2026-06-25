@@ -1,6 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import {
+  useEffect,
+  useState,
+  type ChangeEvent,
+  type ElementType,
+  type FormEvent,
+} from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -12,11 +18,20 @@ import {
   Layers3,
   ListChecks,
   Route,
+  Save,
+  Settings2,
   Video,
 } from "lucide-react";
+import {
+  getTrainingProgramById,
+  TrainingStatus,
+  updateTrainingProgram,
+} from "@/lib/training";
 import BuilderPage from "../page";
 
 type BuilderTabId = "program" | "sections" | "courses" | "lessons" | "structure";
+
+const statusOptions: TrainingStatus[] = ["draft", "published", "archived"];
 
 const workflowSteps: {
   id: BuilderTabId;
@@ -25,7 +40,7 @@ const workflowSteps: {
   description: string;
   detail: string;
   status: string;
-  icon: React.ElementType;
+  icon: ElementType;
 }[] = [
   {
     id: "program",
@@ -33,8 +48,8 @@ const workflowSteps: {
     shortTitle: "Program",
     description: "Confirm title, owner, status, and route.",
     detail:
-      "This tab will become the focused editor for program-level settings. For now, use the legacy editor below for actual saving.",
-    status: "Next implementation target",
+      "Program-level settings are now editable in the new builder. Save here first, then continue with sections and courses.",
+    status: "Live",
     icon: FileText,
   },
   {
@@ -79,12 +94,228 @@ const workflowSteps: {
   },
 ];
 
+const getStatusClass = (status: TrainingStatus) => {
+  if (status === "published") return "bg-emerald-100 text-emerald-700";
+  if (status === "archived") return "bg-amber-100 text-amber-700";
+  return "bg-slate-100 text-slate-600";
+};
+
 export default function AdvancedTrainingBuilderRoute() {
   const params = useParams();
   const programId = params.programId as string;
   const [activeTab, setActiveTab] = useState<BuilderTabId>("program");
+  const [loadingProgram, setLoadingProgram] = useState(true);
+  const [savingProgram, setSavingProgram] = useState(false);
+  const [programMessage, setProgramMessage] = useState("");
+  const [programForm, setProgramForm] = useState({
+    title: "",
+    description: "",
+    ownerDepartment: "",
+    status: "draft" as TrainingStatus,
+    order: 1 as number | "",
+  });
+
   const activeStep = workflowSteps.find((step) => step.id === activeTab) || workflowSteps[0];
   const ActiveIcon = activeStep.icon;
+
+  const fetchProgram = async () => {
+    if (!programId) return;
+
+    setLoadingProgram(true);
+
+    try {
+      const program = await getTrainingProgramById(programId);
+
+      if (program) {
+        setProgramForm({
+          title: program.title || "",
+          description: program.description || "",
+          ownerDepartment: program.ownerDepartment || "",
+          status: program.status || "draft",
+          order: program.order ?? 1,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to load program settings:", error);
+      setProgramMessage("Failed to load program settings.");
+    } finally {
+      setLoadingProgram(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProgram();
+  }, [programId]);
+
+  const handleProgramChange = (
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = event.target;
+    setProgramMessage("");
+
+    setProgramForm((prev) => ({
+      ...prev,
+      [name]: name === "order" ? (value === "" ? "" : Number(value)) : value,
+    }));
+  };
+
+  const handleProgramSave = async (event: FormEvent) => {
+    event.preventDefault();
+
+    if (!programForm.title.trim()) {
+      setProgramMessage("Program title is required.");
+      return;
+    }
+
+    setSavingProgram(true);
+    setProgramMessage("");
+
+    try {
+      await updateTrainingProgram(programId, {
+        title: programForm.title.trim(),
+        description: programForm.description.trim(),
+        ownerDepartment: programForm.ownerDepartment.trim(),
+        status: programForm.status,
+        order: programForm.order === "" ? 0 : Number(programForm.order),
+      });
+
+      setProgramMessage("Program settings saved.");
+      await fetchProgram();
+    } catch (error) {
+      console.error("Failed to save program settings:", error);
+      setProgramMessage("Failed to save program settings.");
+    } finally {
+      setSavingProgram(false);
+    }
+  };
+
+  const renderActiveTabPanel = () => {
+    if (activeTab === "program") {
+      return (
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 ring-1 ring-blue-100">
+                <Settings2 size={20} />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Program Settings</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Edit the program-level metadata that controls the frontend training module.
+                </p>
+              </div>
+            </div>
+
+            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(programForm.status)}`}>
+              {programForm.status}
+            </span>
+          </div>
+
+          {loadingProgram ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
+              Loading program settings...
+            </div>
+          ) : (
+            <form onSubmit={handleProgramSave} className="grid gap-5 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Program ID</label>
+                <input
+                  value={programId}
+                  disabled
+                  className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 font-mono text-sm text-slate-500"
+                />
+                <p className="mt-1 text-xs text-slate-500">Program ID cannot be changed.</p>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Title</label>
+                <input
+                  name="title"
+                  value={programForm.title}
+                  onChange={handleProgramChange}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Owner Department</label>
+                <input
+                  name="ownerDepartment"
+                  value={programForm.ownerDepartment}
+                  onChange={handleProgramChange}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Status</label>
+                <select
+                  name="status"
+                  value={programForm.status}
+                  onChange={handleProgramChange}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                >
+                  {statusOptions.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-slate-500">
+                  Published programs appear as native training modules.
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Order</label>
+                <input
+                  name="order"
+                  type="number"
+                  value={programForm.order}
+                  onChange={handleProgramChange}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-sm font-medium text-slate-700">Description</label>
+                <textarea
+                  name="description"
+                  value={programForm.description}
+                  onChange={handleProgramChange}
+                  rows={5}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                />
+              </div>
+
+              <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                <div className="text-sm text-slate-500">
+                  {programMessage || "Save here to update the program and synced native module."}
+                </div>
+                <button
+                  type="submit"
+                  disabled={savingProgram}
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:bg-slate-400"
+                >
+                  <Save size={16} /> {savingProgram ? "Saving..." : "Save Program"}
+                </button>
+              </div>
+            </form>
+          )}
+        </section>
+      );
+    }
+
+    return (
+      <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-slate-500 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">{activeStep.shortTitle}</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6">{activeStep.detail}</p>
+        <p className="mt-4 text-sm">
+          Use the legacy advanced editor below until this tab is migrated.
+        </p>
+      </section>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -133,7 +364,7 @@ export default function AdvancedTrainingBuilderRoute() {
           </div>
 
           <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
-            <CheckCircle2 size={15} /> Existing data logic preserved
+            <CheckCircle2 size={15} /> Program tab migrated
           </div>
         </div>
 
@@ -188,12 +419,14 @@ export default function AdvancedTrainingBuilderRoute() {
         </div>
       </section>
 
+      {renderActiveTabPanel()}
+
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="text-sm font-semibold text-slate-700">Legacy advanced editor area</div>
             <p className="mt-1 text-xs text-slate-500">
-              Full create/edit/delete controls remain here until each tab is migrated.
+              Full create/edit/delete controls remain here until sections, courses, lessons, and structure tabs are migrated.
             </p>
           </div>
         </div>
