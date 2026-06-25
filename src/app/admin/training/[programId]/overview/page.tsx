@@ -13,10 +13,12 @@ import {
   LayoutDashboard,
   Save,
   Settings2,
+  Trash2,
   Video,
 } from "lucide-react";
 import AdminGuard from "@/app/components/AdminGuard";
 import {
+  deleteTrainingProgram,
   getTrainingCoursesByProgram,
   getTrainingLessonsByProgram,
   getTrainingLevelsByProgram,
@@ -44,6 +46,8 @@ function TrainingProgramOverviewContent() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [program, setProgram] = useState<TrainingProgram | null>(null);
   const [levels, setLevels] = useState<TrainingLevel[]>([]);
   const [courses, setCourses] = useState<TrainingCourse[]>([]);
@@ -57,6 +61,8 @@ function TrainingProgramOverviewContent() {
   });
 
   const routePreview = `/training/${programId}`;
+  const canDeleteProgram = form.status !== "published";
+  const deleteConfirmationMatches = deleteConfirmation.trim() === programId;
 
   const coursesByLevel = useMemo(() => {
     const map = new Map<string, TrainingCourse[]>();
@@ -158,6 +164,36 @@ function TrainingProgramOverviewContent() {
       alert("Failed to save training program.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteProgram = async () => {
+    if (!canDeleteProgram) {
+      alert("Published programs must be changed to Draft or Archived before deletion.");
+      return;
+    }
+
+    if (!deleteConfirmationMatches) {
+      alert("Please type the exact Program ID to confirm deletion.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete training program "${form.title || programId}"?\n\nThis will remove the program, ${levels.length} sections, ${courses.length} courses, ${lessons.length} lessons, and its native module. This cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    setDeleting(true);
+
+    try {
+      await deleteTrainingProgram(programId);
+      router.push("/admin/training");
+    } catch (error) {
+      console.error("Failed to delete training program:", error);
+      alert("Failed to delete training program. Published programs must be archived first.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -348,6 +384,48 @@ function TrainingProgramOverviewContent() {
             );
           })}
           {levels.length === 0 && <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">No sections yet. Open Advanced Builder to add sections, courses, and lessons.</div>}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
+              <Trash2 size={14} /> Danger Zone
+            </div>
+            <h2 className="mt-3 text-lg font-semibold text-red-900">Delete Training Program</h2>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-red-700">
+              This removes the program, {levels.length} sections, {courses.length} courses, {lessons.length} lessons, and its native module. Published programs must be changed to Draft or Archived first.
+            </p>
+          </div>
+        </div>
+
+        {!canDeleteProgram && (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            This program is currently published. Change Status to Draft or Archived and save before deletion is allowed.
+          </div>
+        )}
+
+        <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-red-900">Type Program ID to confirm</label>
+            <input
+              value={deleteConfirmation}
+              onChange={(event) => setDeleteConfirmation(event.target.value)}
+              placeholder={programId}
+              className="w-full rounded-xl border border-red-200 bg-white px-3 py-2 font-mono text-sm outline-none focus:border-red-300 focus:ring-4 focus:ring-red-100"
+            />
+          </div>
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={handleDeleteProgram}
+              disabled={!canDeleteProgram || !deleteConfirmationMatches || deleting}
+              className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              <Trash2 size={16} /> {deleting ? "Deleting..." : "Delete Program"}
+            </button>
+          </div>
         </div>
       </section>
 
