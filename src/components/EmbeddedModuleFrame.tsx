@@ -6,19 +6,43 @@ type EmbeddedModuleFrameProps = {
   title: string;
   src: string;
   height?: string;
+  autoResize?: boolean;
+};
+
+const MIN_AUTO_RESIZE_HEIGHT = 720;
+const MAX_AUTO_RESIZE_HEIGHT = 12000;
+const RESIZE_MESSAGE_TYPE = "LUMENS_PORTAL_IFRAME_HEIGHT";
+
+const isTrustedEmbedOrigin = (origin: string) => {
+  if (!origin) return false;
+
+  try {
+    const hostname = new URL(origin).hostname;
+
+    return (
+      hostname === "script.google.com" ||
+      hostname.endsWith(".googleusercontent.com") ||
+      hostname === "docs.google.com"
+    );
+  } catch {
+    return false;
+  }
 };
 
 export default function EmbeddedModuleFrame({
   title,
   src,
   height = "calc(100vh - 64px)",
+  autoResize = false,
 }: EmbeddedModuleFrameProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSlowLoading, setIsSlowLoading] = useState(false);
+  const [frameHeight, setFrameHeight] = useState(height);
 
   useEffect(() => {
     setIsLoading(true);
     setIsSlowLoading(false);
+    setFrameHeight(height);
 
     const slowLoadingTimer = window.setTimeout(() => {
       setIsSlowLoading(true);
@@ -27,7 +51,34 @@ export default function EmbeddedModuleFrame({
     return () => {
       window.clearTimeout(slowLoadingTimer);
     };
-  }, [src]);
+  }, [src, height]);
+
+  useEffect(() => {
+    if (!autoResize) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      if (!isTrustedEmbedOrigin(event.origin)) return;
+
+      const data = event.data;
+      if (!data || data.type !== RESIZE_MESSAGE_TYPE) return;
+
+      const nextHeight = Math.ceil(Number(data.height));
+      if (!Number.isFinite(nextHeight) || nextHeight <= 0) return;
+
+      const safeHeight = Math.min(
+        Math.max(nextHeight, MIN_AUTO_RESIZE_HEIGHT),
+        MAX_AUTO_RESIZE_HEIGHT
+      );
+
+      setFrameHeight(`${safeHeight}px`);
+    };
+
+    window.addEventListener("message", handleMessage);
+
+    return () => {
+      window.removeEventListener("message", handleMessage);
+    };
+  }, [autoResize]);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-white">
@@ -69,8 +120,9 @@ export default function EmbeddedModuleFrame({
       <iframe
         src={src}
         title={title}
-        className="w-full border-0 bg-white"
-        style={{ height }}
+        className="block w-full border-0 bg-white"
+        style={{ height: frameHeight }}
+        scrolling={autoResize ? "no" : "auto"}
         allowFullScreen
         loading="eager"
         onLoad={() => {
