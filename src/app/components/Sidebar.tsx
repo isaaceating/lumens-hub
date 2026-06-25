@@ -17,7 +17,6 @@ import {
   MonitorSmartphone,
   Newspaper,
   Settings,
-  Shield,
   Users,
 } from "lucide-react";
 import { useUserProfile } from "@/lib/useUserProfile";
@@ -33,22 +32,10 @@ const getModuleHref = (module: any) => {
 
 const adminNavItems = [
   {
-    id: "admin-home",
-    name: "Admin Home",
-    href: "/admin",
-    icon: Shield,
-  },
-  {
-    id: "admin-training",
-    name: "Training",
-    href: "/admin/training",
-    icon: GraduationCap,
-  },
-  {
-    id: "admin-news",
-    name: "News",
-    href: "/admin/news",
-    icon: Newspaper,
+    id: "admin-users",
+    name: "Users",
+    href: "/admin/users",
+    icon: Users,
   },
   {
     id: "admin-modules",
@@ -57,10 +44,16 @@ const adminNavItems = [
     icon: Boxes,
   },
   {
-    id: "admin-users",
-    name: "Users",
-    href: "/admin/users",
-    icon: Users,
+    id: "admin-news",
+    name: "News",
+    href: "/admin/news",
+    icon: Newspaper,
+  },
+  {
+    id: "admin-training",
+    name: "Training",
+    href: "/admin/training",
+    icon: GraduationCap,
   },
 ];
 
@@ -361,10 +354,7 @@ export default function Sidebar() {
   }) => {
     const Icon = item.icon;
 
-    const isActive =
-      item.href === "/admin"
-        ? pathname === "/admin"
-        : pathname === item.href || pathname.startsWith(`${item.href}/`);
+    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
     const className = collapsed
       ? `mb-1 flex items-center justify-center rounded-xl px-2 py-2.5 text-sm transition ${
