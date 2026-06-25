@@ -12,7 +12,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { syncTrainingProgramModule } from "./modules";
+import { deleteModule, syncTrainingProgramModule } from "./modules";
 
 export type TrainingStatus = "draft" | "published" | "archived";
 
@@ -196,6 +196,40 @@ export const updateTrainingProgram = async (
   if (updatedProgram) {
     await syncTrainingProgramModule(updatedProgram);
   }
+};
+
+export const deleteTrainingProgram = async (programId: string) => {
+  const program = await getTrainingProgramById(programId);
+
+  if (!program) {
+    throw new Error("Training program not found.");
+  }
+
+  if (program.status === "published") {
+    throw new Error("Published training programs must be archived before deletion.");
+  }
+
+  const levels = await getTrainingLevelsByProgram(programId);
+  const courses = await getTrainingCoursesByProgram(programId);
+  const lessons = await getTrainingLessonsByProgram(programId);
+  const batch = writeBatch(db);
+
+  lessons.forEach((lesson) => {
+    batch.delete(doc(db, "trainingLessons", lesson.id));
+  });
+
+  courses.forEach((course) => {
+    batch.delete(doc(db, "trainingCourses", course.id));
+  });
+
+  levels.forEach((level) => {
+    batch.delete(doc(db, "trainingLevels", level.id));
+  });
+
+  batch.delete(doc(db, "trainingPrograms", programId));
+
+  await batch.commit();
+  await deleteModule(programId);
 };
 
 // Levels
