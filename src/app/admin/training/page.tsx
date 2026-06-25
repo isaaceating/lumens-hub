@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  Archive,
   BadgeCheck,
   Copy,
   Eye,
@@ -10,18 +11,17 @@ import {
   GraduationCap,
   Layers3,
   LibraryBig,
+  PauseCircle,
   Plus,
   Search,
   SlidersHorizontal,
-  Archive,
-  PauseCircle,
 } from "lucide-react";
 import AdminGuard from "@/app/components/AdminGuard";
 import {
   duplicateTrainingProgram,
   getTrainingProgramStats,
   getTrainingPrograms,
-  TrainingProgram,
+  type TrainingProgram,
 } from "@/lib/training";
 
 type ProgramWithStats = TrainingProgram & {
@@ -53,15 +53,10 @@ function AdminTrainingContent() {
 
     try {
       const data = await getTrainingPrograms();
-
       const dataWithStats = await Promise.all(
         data.map(async (program) => {
           const stats = await getTrainingProgramStats(program.id);
-
-          return {
-            ...program,
-            ...stats,
-          };
+          return { ...program, ...stats };
         })
       );
 
@@ -168,8 +163,7 @@ function AdminTrainingContent() {
             Training Management
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Create and manage official training programs, courses, and lessons.
-            Published programs appear as native modules under Official Resources.
+            Create and manage official training programs, courses, and lessons. Published programs appear as native modules under Official Resources.
           </p>
         </div>
 
@@ -196,27 +190,22 @@ function AdminTrainingContent() {
           <div className="flex items-center justify-between"><div className="text-sm font-medium text-slate-500">Programs</div><LibraryBig size={18} className="text-slate-400" /></div>
           <div className="mt-3 text-3xl font-bold text-slate-900">{programs.length}</div>
         </button>
-
         <button type="button" onClick={() => applyStatusView("published")} className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5 text-left shadow-sm transition hover:bg-emerald-100">
           <div className="flex items-center justify-between"><div className="text-sm font-medium text-emerald-700">Published</div><BadgeCheck size={18} className="text-emerald-500" /></div>
           <div className="mt-3 text-3xl font-bold text-emerald-900">{stats.published}</div>
         </button>
-
         <button type="button" onClick={() => applyStatusView("draft")} className="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-slate-300 hover:bg-slate-50">
           <div className="flex items-center justify-between"><div className="text-sm font-medium text-slate-500">Drafts</div><PauseCircle size={18} className="text-slate-400" /></div>
           <div className="mt-3 text-3xl font-bold text-slate-900">{stats.draft}</div>
         </button>
-
         <button type="button" onClick={() => applyStatusView("archived")} className="rounded-2xl border border-amber-100 bg-amber-50 p-5 text-left shadow-sm transition hover:bg-amber-100">
           <div className="flex items-center justify-between"><div className="text-sm font-medium text-amber-700">Archived</div><Archive size={18} className="text-amber-500" /></div>
           <div className="mt-3 text-3xl font-bold text-amber-900">{stats.archived}</div>
         </button>
-
         <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5 shadow-sm">
           <div className="flex items-center justify-between"><div className="text-sm font-medium text-blue-700">Courses</div><Layers3 size={18} className="text-blue-500" /></div>
           <div className="mt-3 text-3xl font-bold text-blue-900">{stats.courses}</div>
         </div>
-
         <div className="rounded-2xl border border-purple-100 bg-purple-50 p-5 shadow-sm">
           <div className="flex items-center justify-between"><div className="text-sm font-medium text-purple-700">Lessons</div><GraduationCap size={18} className="text-purple-500" /></div>
           <div className="mt-3 text-3xl font-bold text-purple-900">{stats.lessons}</div>
@@ -227,7 +216,6 @@ function AdminTrainingContent() {
         <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-700">
           <Filter size={16} /> Filters
         </div>
-
         <div className="grid gap-3 lg:grid-cols-[1.5fr_repeat(2,minmax(0,1fr))]">
           <label className="relative block">
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -238,23 +226,13 @@ function AdminTrainingContent() {
               placeholder="Search program title, id, owner, description..."
             />
           </label>
-
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-            className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
-          >
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50">
             <option value="all">Status · All</option>
             <option value="published">Published</option>
             <option value="draft">Draft</option>
             <option value="archived">Archived</option>
           </select>
-
-          <select
-            value={sortKey}
-            onChange={(event) => setSortKey(event.target.value as SortKey)}
-            className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
-          >
+          <select value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50">
             <option value="title">Sort · Title</option>
             <option value="status">Sort · Status</option>
             <option value="courses">Sort · Courses</option>
@@ -268,9 +246,7 @@ function AdminTrainingContent() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
           <div>
             <h2 className="font-semibold text-slate-900">Training Programs</h2>
-            <p className="mt-1 text-xs text-slate-500">
-              Showing {filteredPrograms.length} of {programs.length} programs.
-            </p>
+            <p className="mt-1 text-xs text-slate-500">Showing {filteredPrograms.length} of {programs.length} programs.</p>
           </div>
         </div>
 
@@ -286,79 +262,45 @@ function AdminTrainingContent() {
                 <th className="px-5 py-3 font-semibold">Action</th>
               </tr>
             </thead>
-
             <tbody className="divide-y divide-slate-100">
               {filteredPrograms.map((program) => (
                 <tr key={program.id} className="transition hover:bg-slate-50/80">
                   <td className="max-w-md px-5 py-4 align-top">
                     <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-700">
-                        <GraduationCap size={18} />
-                      </div>
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-700"><GraduationCap size={18} /></div>
                       <div className="min-w-0">
                         <div className="font-semibold text-slate-900">{program.title}</div>
                         <div className="mt-1 break-all font-mono text-xs text-slate-500">{program.id}</div>
-                        <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">
-                          {program.description || "No description."}
-                        </p>
+                        <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{program.description || "No description."}</p>
                       </div>
                     </div>
                   </td>
-
                   <td className="px-5 py-4 align-top">
                     <div className="flex flex-wrap gap-2">
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(program.status)}`}>
-                        {program.status}
-                      </span>
-                      <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-                        Native Module
-                      </span>
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(program.status)}`}>{program.status}</span>
+                      <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">Native Module</span>
                     </div>
                   </td>
-
-                  <td className="px-5 py-4 align-top text-slate-600">
-                    {program.ownerDepartment || "—"}
-                  </td>
-
+                  <td className="px-5 py-4 align-top text-slate-600">{program.ownerDepartment || "—"}</td>
                   <td className="px-5 py-4 align-top text-slate-600">
                     <div>{program.courseCount} courses</div>
                     <div className="mt-1 text-xs text-slate-500">{program.lessonCount} lessons</div>
                   </td>
-
-                  <td className="px-5 py-4 align-top">
-                    <div className="font-mono text-xs text-slate-500">/training/{program.id}</div>
-                  </td>
-
+                  <td className="px-5 py-4 align-top"><div className="font-mono text-xs text-slate-500">/training/{program.id}</div></td>
                   <td className="px-5 py-4 align-top">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link href={`/admin/training/${program.id}/overview`} className="inline-flex rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700">
-                        Manage
-                      </Link>
-                      <Link href={`/admin/training/${program.id}`} className="inline-flex rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100">
-                        Builder
-                      </Link>
-                      <Link href={`/training/${program.id}`} className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200">
-                        <Eye size={13} /> Preview
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => handleDuplicate(program)}
-                        disabled={duplicatingId === program.id}
-                        className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:text-slate-400"
-                      >
+                      <Link href={`/admin/training/${program.id}/overview`} className="inline-flex rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700">Manage</Link>
+                      <Link href={`/admin/training/${program.id}/builder`} className="inline-flex rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100">Builder</Link>
+                      <Link href={`/training/${program.id}`} className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200"><Eye size={13} /> Preview</Link>
+                      <button type="button" onClick={() => handleDuplicate(program)} disabled={duplicatingId === program.id} className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:text-slate-400">
                         <Copy size={13} /> {duplicatingId === program.id ? "Duplicating..." : "Duplicate"}
                       </button>
                     </div>
                   </td>
                 </tr>
               ))}
-
               {filteredPrograms.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-slate-500">
-                    No training programs match the current filters.
-                  </td>
-                </tr>
+                <tr><td colSpan={6} className="px-5 py-10 text-center text-slate-500">No training programs match the current filters.</td></tr>
               )}
             </tbody>
           </table>
@@ -369,9 +311,7 @@ function AdminTrainingContent() {
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
           <h2 className="text-lg font-semibold text-slate-900">No training programs yet.</h2>
           <p className="mt-2 text-sm text-slate-500">Create your first official training program.</p>
-          <Link href="/admin/training/new" className="mt-5 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-            <Plus size={16} /> Create Program
-          </Link>
+          <Link href="/admin/training/new" className="mt-5 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"><Plus size={16} /> Create Program</Link>
         </div>
       )}
     </div>
