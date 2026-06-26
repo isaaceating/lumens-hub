@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { ArrowLeft, ExternalLink, FileText, Plus, Save } from "lucide-react";
 import AdminGuard from "@/app/components/AdminGuard";
 import {
@@ -46,7 +46,9 @@ const normalizeMaterials = (materials: TrainingMaterial[]) =>
 
 function MaterialsEditorContent() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const programId = params.programId as string;
+  const requestedLessonId = searchParams.get("lessonId") || "";
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -89,6 +91,16 @@ function MaterialsEditorContent() {
 
   const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId) || null;
 
+  const loadLessonMaterials = (lesson: TrainingLesson | undefined) => {
+    if (!lesson) {
+      setMaterials([createEmptyMaterial(1)]);
+      return;
+    }
+
+    setSelectedLessonId(lesson.id);
+    setMaterials(lesson.materials?.length ? sortByOrder(lesson.materials) : [createEmptyMaterial(1)]);
+  };
+
   const fetchData = async () => {
     if (!programId) return;
 
@@ -106,11 +118,15 @@ function MaterialsEditorContent() {
       setCourses(courseData);
       setLessons(lessonData);
 
+      const requestedLesson = requestedLessonId
+        ? lessonData.find((lesson) => lesson.id === requestedLessonId)
+        : undefined;
+      const currentLesson = selectedLessonId
+        ? lessonData.find((lesson) => lesson.id === selectedLessonId)
+        : undefined;
       const firstLesson = lessonData[0];
-      if (firstLesson && !selectedLessonId) {
-        setSelectedLessonId(firstLesson.id);
-        setMaterials(firstLesson.materials?.length ? sortByOrder(firstLesson.materials) : [createEmptyMaterial(1)]);
-      }
+
+      loadLessonMaterials(requestedLesson || currentLesson || firstLesson);
     } catch (error) {
       console.error("Failed to load lesson materials:", error);
       setMessage("Failed to load lesson materials.");
@@ -121,7 +137,7 @@ function MaterialsEditorContent() {
 
   useEffect(() => {
     fetchData();
-  }, [programId]);
+  }, [programId, requestedLessonId]);
 
   const handleLessonSelect = (lessonId: string) => {
     const lesson = lessons.find((item) => item.id === lessonId);
