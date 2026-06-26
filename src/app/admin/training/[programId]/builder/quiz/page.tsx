@@ -14,6 +14,7 @@ import {
   type TrainingQuizQuestion,
 } from "@/lib/training";
 import BuilderEditorShell from "../components/BuilderEditorShell";
+import { sortByOrder } from "../components/editorHelpers";
 import LessonPicker from "../components/LessonPicker";
 import LessonQuizForm from "../components/LessonQuizForm";
 
@@ -24,13 +25,6 @@ const createEmptyQuestion = (order: number): TrainingQuizQuestion => ({
   explanation: "",
   order,
 });
-
-const sortByOrder = <T extends { order?: number; title?: string }>(items: T[]) =>
-  [...items].sort((a, b) => {
-    const orderDiff = (a.order || 0) - (b.order || 0);
-    if (orderDiff !== 0) return orderDiff;
-    return (a.title || "").localeCompare(b.title || "");
-  });
 
 const normalizeQuestions = (questions: TrainingQuizQuestion[]) =>
   questions
