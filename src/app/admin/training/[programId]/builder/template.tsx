@@ -57,8 +57,23 @@ export default function BuilderTemplate({ children }: { children: ReactNode }) {
       });
     };
 
-    addLessonActions();
-    const timer = window.setInterval(addLessonActions, 800);
+    const hideLegacyEditor = () => {
+      const headings = Array.from(document.querySelectorAll("div.text-sm.font-semibold.text-slate-700"));
+      const legacyHeading = headings.find((heading) => heading.textContent?.includes("Legacy advanced editor area"));
+      const legacySection = legacyHeading?.closest(".rounded-2xl.border.border-slate-200.bg-slate-50.p-4.shadow-sm");
+
+      if (legacySection instanceof HTMLElement) {
+        legacySection.style.display = "none";
+      }
+    };
+
+    const applyBuilderEnhancements = () => {
+      addLessonActions();
+      hideLegacyEditor();
+    };
+
+    applyBuilderEnhancements();
+    const timer = window.setInterval(applyBuilderEnhancements, 800);
 
     return () => window.clearInterval(timer);
   }, [programId]);
