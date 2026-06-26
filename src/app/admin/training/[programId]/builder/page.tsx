@@ -44,7 +44,7 @@ import {
   type TrainingLevel,
   type TrainingStatus,
 } from "@/lib/training";
-import BuilderPage from "../page";
+
 import LessonsTabLayout from "./components/LessonsTabLayout";
 
 type BuilderTabId =
@@ -1402,9 +1402,8 @@ export default function AdvancedTrainingBuilderRoute() {
               Build from top to bottom
             </h2>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
-              Program, Sections, Courses, Lessons, and Structure are now live in
-              the new builder. Advanced settings still use the legacy editor
-              below.
+              Program, Sections, Courses, Lessons, Materials, Quiz, and
+              Structure are now live in the new builder.
             </p>
           </div>
           <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
@@ -1465,21 +1464,6 @@ export default function AdvancedTrainingBuilderRoute() {
       </section>
 
       {renderActiveTabPanel()}
-
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="text-sm font-semibold text-slate-700">
-              Legacy advanced editor area
-            </div>
-            <p className="mt-1 text-xs text-slate-500">
-              Advanced controls remain here until materials and quiz are
-              migrated.
-            </p>
-          </div>
-        </div>
-        <BuilderPage />
-      </div>
     </div>
   );
 }
