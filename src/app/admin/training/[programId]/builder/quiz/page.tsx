@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { ArrowLeft, HelpCircle, Plus, Save } from "lucide-react";
@@ -15,12 +15,7 @@ import {
   type TrainingLevel,
   type TrainingQuizQuestion,
 } from "@/lib/training";
-import {
-  getCourseSectionId,
-  getCourseTitle,
-  getSectionTitle,
-  sortLessonsByHierarchy,
-} from "../components/lessonHierarchy";
+import LessonPicker from "../components/LessonPicker";
 
 const createEmptyQuestion = (order: number): TrainingQuizQuestion => ({
   question: "",
@@ -65,13 +60,6 @@ function QuizEditorContent() {
   const [quizRequired, setQuizRequired] = useState(false);
   const [quizPassScore, setQuizPassScore] = useState<number | "">(80);
   const [questions, setQuestions] = useState<TrainingQuizQuestion[]>([createEmptyQuestion(1)]);
-
-  const sortedLessons = useMemo(
-    () => sortLessonsByHierarchy(lessons, courses, sections),
-    [lessons, courses, sections]
-  );
-
-  const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId) || null;
 
   const loadLessonQuiz = (lesson: TrainingLesson | undefined) => {
     if (!lesson) {
@@ -248,36 +236,17 @@ function QuizEditorContent() {
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[360px_1fr]">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="font-semibold text-slate-900">Select Lesson</h2>
-          <p className="mt-1 text-sm text-slate-500">Choose which lesson quiz to edit.</p>
-
-          <select
-            value={selectedLessonId}
-            onChange={(event: ChangeEvent<HTMLSelectElement>) => handleLessonSelect(event.target.value)}
-            className="mt-4 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
-          >
-            <option value="">Select lesson</option>
-            {sortedLessons.map((lesson) => (
-              <option key={lesson.id} value={lesson.id}>
-                {getSectionTitle(sections, getCourseSectionId(courses, lesson.courseId))} / {getCourseTitle(courses, lesson.courseId)} / {lesson.title}
-              </option>
-            ))}
-          </select>
-
-          {selectedLesson && (
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                {getSectionTitle(sections, getCourseSectionId(courses, selectedLesson.courseId))}
-              </div>
-              <div className="mt-2 text-sm font-semibold text-slate-900">{getCourseTitle(courses, selectedLesson.courseId)}</div>
-              <div className="mt-1 text-sm text-slate-600">{selectedLesson.title}</div>
-              <div className="mt-3 text-xs text-slate-500">
-                Current questions: {selectedLesson.quizQuestions?.length || 0}
-              </div>
-            </div>
-          )}
-        </div>
+        <LessonPicker
+          sections={sections}
+          courses={courses}
+          lessons={lessons}
+          value={selectedLessonId}
+          onChange={handleLessonSelect}
+          heading="Select Lesson"
+          helperText="Choose which lesson quiz to edit."
+          metaLabel="Current questions"
+          metaValue={(lesson) => lesson.quizQuestions?.length || 0}
+        />
 
         <form onSubmit={handleSave} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
