@@ -18,10 +18,10 @@ export default function BuilderEditorHeader({
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
-          href={`/admin/training/${programId}/builder`}
+          href={`/admin/training/${programId}/builder#lessons`}
           className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-sm hover:bg-blue-50 hover:text-blue-700"
         >
-          <ArrowLeft size={16} /> Back to Builder
+          <ArrowLeft size={16} /> Back to Lessons
         </Link>
       </div>
 
