@@ -32,6 +32,11 @@ type LessonEditorFormProps = {
   onCancel: () => void;
 };
 
+const videoTypeOptions = [
+  { value: "youtube", label: "YouTube" },
+  { value: "google-drive", label: "Google Drive" },
+];
+
 export default function LessonEditorForm({
   editingLessonId,
   saving,
@@ -43,6 +48,9 @@ export default function LessonEditorForm({
   onSubmit,
   onCancel,
 }: LessonEditorFormProps) {
+  const hasCustomVideoType =
+    form.videoType && !videoTypeOptions.some((option) => option.value === form.videoType);
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-5 flex items-start gap-3">
@@ -86,7 +94,13 @@ export default function LessonEditorForm({
         </div>
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-700">Video Type</label>
-          <input name="videoType" value={form.videoType} onChange={onChange} placeholder="youtube" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
+          <select name="videoType" value={form.videoType || "youtube"} onChange={onChange} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50">
+            {videoTypeOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+            {hasCustomVideoType && <option value={form.videoType}>{form.videoType}</option>}
+          </select>
+          <p className="mt-1 text-xs text-slate-500">YouTube and Google Drive videos are embedded on the lesson page when the link format is supported.</p>
         </div>
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-700">Video URL</label>
