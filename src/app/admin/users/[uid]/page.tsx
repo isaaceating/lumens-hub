@@ -21,6 +21,11 @@ import AdminGuard from "@/app/components/AdminGuard";
 import { getUserById, updateUserProfile } from "@/lib/users";
 import { modules as staticModules } from "@/app/config/modules";
 import { getAllModules } from "@/lib/modules";
+import AdminModulesAccessPanel from "./components/AdminModulesAccessPanel";
+import {
+  adminModuleOptions,
+  type AdminModuleKey,
+} from "@/lib/adminPermissions";
 
 const SYSTEM_ROLES = ["user", "admin"];
 
@@ -52,7 +57,7 @@ type DashboardSectionKey =
   | "resources"
   | "bookmarks";
 
-type DetailTab = "profile" | "dashboard" | "modules" | "audit";
+type DetailTab = "profile" | "dashboard" | "modules" | "admin" | "audit";
 
 const dashboardSectionOptions: {
   key: DashboardSectionKey;
@@ -129,6 +134,7 @@ function UserDetailContent() {
     useState(false);
 
   const [enabledModules, setEnabledModules] = useState<string[]>([]);
+  const [adminModules, setAdminModules] = useState<AdminModuleKey[]>([]);
 
   const [enabledDashboardSections, setEnabledDashboardSections] = useState<
     string[]
@@ -192,6 +198,15 @@ function UserDetailContent() {
             Array.isArray(data.enabledModules) ? data.enabledModules : [],
           );
 
+          setAdminModules(
+            Array.isArray(data.adminModules)
+              ? data.adminModules.filter(
+                  (module: string): module is AdminModuleKey =>
+                    adminModuleOptions.some((option) => option.id === module),
+                )
+              : adminModuleOptions.map((option) => option.id),
+          );
+
           setEnabledDashboardSections(
             Array.isArray(data.enabledDashboardSections)
               ? data.enabledDashboardSections
@@ -251,6 +266,22 @@ function UserDetailContent() {
         ? prev.filter((id) => id !== moduleId)
         : [...prev, moduleId],
     );
+  };
+
+  const toggleAdminModule = (moduleId: AdminModuleKey) => {
+    setAdminModules((prev) =>
+      prev.includes(moduleId)
+        ? prev.filter((id) => id !== moduleId)
+        : [...prev, moduleId],
+    );
+  };
+
+  const selectAllAdminModules = () => {
+    setAdminModules(adminModuleOptions.map((option) => option.id));
+  };
+
+  const clearAdminModules = () => {
+    setAdminModules([]);
   };
 
   const toggleDashboardSection = (sectionKey: DashboardSectionKey) => {
@@ -320,6 +351,7 @@ function UserDetailContent() {
         },
 
         enabledModules,
+        adminModules: systemRole === "admin" ? adminModules : [],
         enabledDashboardSections,
       });
 
@@ -432,6 +464,12 @@ function UserDetailContent() {
       label: "Modules",
       description: "Workspace and official resource access.",
       icon: <Blocks size={16} />,
+    },
+    {
+      key: "admin",
+      label: "Admin",
+      description: "Admin management permissions.",
+      icon: <ShieldCheck size={16} />,
     },
     {
       key: "audit",
@@ -783,6 +821,16 @@ function UserDetailContent() {
     </div>
   );
 
+  const renderAdminTab = () => (
+    <AdminModulesAccessPanel
+      systemRole={systemRole}
+      selectedModules={adminModules}
+      onToggle={toggleAdminModule}
+      onSelectAll={selectAllAdminModules}
+      onClear={clearAdminModules}
+    />
+  );
+
   const renderAuditTab = () => (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-5 flex items-start gap-3">
@@ -976,6 +1024,7 @@ function UserDetailContent() {
               {activeTab === "profile" && renderProfileTab()}
               {activeTab === "dashboard" && renderDashboardTab()}
               {activeTab === "modules" && renderModulesTab()}
+              {activeTab === "admin" && renderAdminTab()}
               {activeTab === "audit" && renderAuditTab()}
             </div>
           </div>
@@ -983,8 +1032,15 @@ function UserDetailContent() {
           <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur">
             <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
               <div className="text-sm text-slate-500">
-                Managing <span className="font-semibold text-slate-900">{displayName}</span>
-                <span className="hidden sm:inline"> · {enabledModules.length} modules · {enabledDashboardSections.length} dashboard sections</span>
+                Managing{" "}
+                <span className="font-semibold text-slate-900">
+                  {displayName}
+                </span>
+                <span className="hidden sm:inline">
+                  {" "}
+                  · {enabledModules.length} modules ·{" "}
+                  {enabledDashboardSections.length} dashboard sections
+                </span>
               </div>
 
               <div className="flex items-center gap-3">
