@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useState } from "react";
 import { signInWithGoogle } from "@/lib/auth";
 import { useUserProfile } from "@/lib/useUserProfile";
+import { adminModuleLabels, canAccessAdminModule, type AdminModuleKey } from "@/lib/adminPermissions";
 
-export default function AdminGuard({
-  children,
-}: {
+type AdminGuardProps = {
   children: React.ReactNode;
-}) {
+  module?: AdminModuleKey;
+};
+
+export default function AdminGuard({ children, module }: AdminGuardProps) {
   const { user, profile, loading } = useUserProfile();
   const [signingIn, setSigningIn] = useState(false);
 
@@ -49,11 +51,13 @@ export default function AdminGuard({
     );
   }
 
-  if (!profile || profile.role !== "admin") {
+  if (!canAccessAdminModule(profile, module)) {
+    const moduleLabel = module ? adminModuleLabels[module] : "Admin";
+
     return (
       <div className="mx-auto max-w-xl rounded-2xl border border-red-200 bg-red-50 p-8 text-center shadow-sm">
         <h1 className="text-2xl font-bold text-red-700">
-          Admin access required
+          {moduleLabel} access required
         </h1>
         <p className="mt-3 text-red-700">
           Your account does not have permission to access this admin page.
