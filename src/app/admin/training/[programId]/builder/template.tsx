@@ -15,7 +15,9 @@ export default function BuilderTemplate({ children }: { children: ReactNode }) {
   const programId = params.programId as string;
 
   useEffect(() => {
-    const addLessonActions = () => {
+    // Temporary bridge while builder/page.tsx is still a large single file.
+    // Keep this scoped to the Lessons cards and legacy placeholder only.
+    const addLessonActionButtons = () => {
       const idNodes = Array.from(
         document.querySelectorAll("p.font-mono.text-xs.text-slate-400")
       );
@@ -57,7 +59,7 @@ export default function BuilderTemplate({ children }: { children: ReactNode }) {
       });
     };
 
-    const hideLegacyEditor = () => {
+    const hideLegacyPlaceholder = () => {
       const headings = Array.from(document.querySelectorAll("div.text-sm.font-semibold.text-slate-700"));
       const legacyHeading = headings.find((heading) => heading.textContent?.includes("Legacy advanced editor area"));
       const legacySection = legacyHeading?.closest(".rounded-2xl.border.border-slate-200.bg-slate-50.p-4.shadow-sm");
@@ -68,8 +70,8 @@ export default function BuilderTemplate({ children }: { children: ReactNode }) {
     };
 
     const applyBuilderEnhancements = () => {
-      addLessonActions();
-      hideLegacyEditor();
+      addLessonActionButtons();
+      hideLegacyPlaceholder();
     };
 
     applyBuilderEnhancements();
