@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { ArrowLeft, ExternalLink, FileText, Plus, Save } from "lucide-react";
+import { ExternalLink, FileText, Plus, Save } from "lucide-react";
 import AdminGuard from "@/app/components/AdminGuard";
 import {
   getTrainingCoursesByProgram,
@@ -15,6 +14,7 @@ import {
   type TrainingLevel,
   type TrainingMaterial,
 } from "@/lib/training";
+import BuilderEditorHeader from "../components/BuilderEditorHeader";
 import LessonPicker from "../components/LessonPicker";
 
 const materialTypeOptions = ["slides", "pdf", "doc", "video", "folder", "link"];
@@ -188,27 +188,12 @@ function MaterialsEditorContent() {
 
   return (
     <div className="space-y-6 pb-10">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link
-          href={`/admin/training/${programId}/builder`}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-sm hover:bg-blue-50 hover:text-blue-700"
-        >
-          <ArrowLeft size={16} /> Back to Builder
-        </Link>
-      </div>
-
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="bg-gradient-to-r from-slate-950 to-indigo-800 p-6 text-white">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold ring-1 ring-white/15">
-            Materials Editor
-          </div>
-          <h1 className="mt-3 text-2xl font-bold tracking-tight">Lesson Materials</h1>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-white/75">
-            Select a lesson and manage its learning resources. This updates materials only and does not change quiz settings.
-          </p>
-          <p className="mt-2 font-mono text-xs text-white/55">Program ID: {programId}</p>
-        </div>
-      </section>
+      <BuilderEditorHeader
+        programId={programId}
+        eyebrow="Materials Editor"
+        title="Lesson Materials"
+        description="Select a lesson and manage its learning resources. This updates materials only and does not change quiz settings."
+      />
 
       <section className="grid gap-6 lg:grid-cols-[360px_1fr]">
         <LessonPicker
