@@ -3,6 +3,13 @@
 import { useEffect, type ReactNode } from "react";
 import { useParams } from "next/navigation";
 
+const pencilIcon = `
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path>
+    <path d="m15 5 4 4"></path>
+  </svg>
+`;
+
 export default function BuilderTemplate({ children }: { children: ReactNode }) {
   const params = useParams();
   const programId = params.programId as string;
@@ -26,13 +33,25 @@ export default function BuilderTemplate({ children }: { children: ReactNode }) {
         const topRow = card.querySelector(".flex.flex-wrap.items-start.justify-between.gap-3");
         if (!topRow) return;
 
+        const editButton = Array.from(card.querySelectorAll("button")).find((button) =>
+          button.textContent?.includes("Edit")
+        );
+        if (!editButton) return;
+
         const actions = document.createElement("div");
         actions.setAttribute("data-lesson-actions", "true");
         actions.className = "flex flex-wrap items-center gap-2";
-        actions.innerHTML = `
-          <a class="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100" href="/admin/training/${programId}/builder/materials?lessonId=${lessonId}">Materials</a>
-          <button type="button" disabled class="inline-flex cursor-not-allowed items-center gap-1 rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-400">Quiz</button>
-        `;
+
+        editButton.className = "inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100";
+        actions.appendChild(editButton);
+
+        actions.insertAdjacentHTML(
+          "beforeend",
+          `
+            <a class="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100" href="/admin/training/${programId}/builder/materials?lessonId=${lessonId}">${pencilIcon} Materials</a>
+            <button type="button" disabled class="inline-flex cursor-not-allowed items-center gap-1 rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-400">${pencilIcon} Quiz</button>
+          `
+        );
 
         topRow.appendChild(actions);
       });
