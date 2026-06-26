@@ -15,6 +15,8 @@ import { db } from "./firebase";
 import { deleteModule, syncTrainingProgramModule } from "./modules";
 
 export type TrainingStatus = "draft" | "published" | "archived";
+export type TrainingLessonContentMode = "video" | "slides";
+export type TrainingLessonSlideType = "google-slides" | "google-drive";
 
 export type TrainingMaterial = {
   title: string;
@@ -73,8 +75,11 @@ export type TrainingLesson = {
   courseId: string;
   title: string;
   description?: string;
+  contentMode?: TrainingLessonContentMode;
   videoUrl?: string;
   videoType?: string;
+  slideUrl?: string;
+  slideType?: TrainingLessonSlideType;
   duration?: string;
   materials?: TrainingMaterial[];
   allowComments?: boolean;
@@ -119,11 +124,7 @@ export const getTrainingPrograms = async () => {
 };
 
 export const getPublishedTrainingPrograms = async () => {
-  const q = query(
-    collection(db, "trainingPrograms"),
-    where("status", "==", "published")
-  );
-
+  const q = query(collection(db, "trainingPrograms"), where("status", "==", "published"));
   const snapshot = await getDocs(q);
 
   const programs = snapshot.docs.map((item) => ({
@@ -135,46 +136,30 @@ export const getPublishedTrainingPrograms = async () => {
 };
 
 export const getTrainingProgramById = async (programId: string) => {
-  const programRef = doc(db, "trainingPrograms", programId);
-  const programSnap = await getDoc(programRef);
+  const snap = await getDoc(doc(db, "trainingPrograms", programId));
 
-  if (!programSnap.exists()) {
-    return null;
-  }
+  if (!snap.exists()) return null;
 
   return {
-    id: programSnap.id,
-    ...programSnap.data(),
+    id: snap.id,
+    ...snap.data(),
   } as TrainingProgram;
-};
-
-export const getPublishedTrainingProgramById = async (programId: string) => {
-  const program = await getTrainingProgramById(programId);
-
-  if (!program || program.status !== "published") {
-    return null;
-  }
-
-  return program;
 };
 
 export const createTrainingProgram = async (
   programId: string,
   program: Omit<TrainingProgram, "id" | "createdAt" | "updatedAt">
 ) => {
-  const programRef = doc(db, "trainingPrograms", programId);
-  const timestamp = now();
-
-  await setDoc(programRef, {
+  await setDoc(doc(db, "trainingPrograms", programId), {
     ...program,
-    createdAt: timestamp,
-    updatedAt: timestamp,
+    createdAt: now(),
+    updatedAt: now(),
   });
 
   await syncTrainingProgramModule({
     id: programId,
     title: program.title,
-    description: program.description,
+    description: program.description || "",
     status: program.status,
     order: program.order,
   });
@@ -191,10 +176,10 @@ export const updateTrainingProgram = async (
     updatedAt: now(),
   });
 
-  const updatedProgram = await getTrainingProgramById(programId);
+  const program = await getTrainingProgramById(programId);
 
-  if (updatedProgram) {
-    await syncTrainingProgramModule(updatedProgram);
+  if (program) {
+    await syncTrainingProgramModule(program);
   }
 };
 
@@ -206,7 +191,7 @@ export const deleteTrainingProgram = async (programId: string) => {
   }
 
   if (program.status === "published") {
-    throw new Error("Published training programs must be archived before deletion.");
+    throw new Error("Published programs must be archived before deletion.");
   }
 
   const levels = await getTrainingLevelsByProgram(programId);
@@ -430,6 +415,8 @@ export const createTrainingLesson = async (
 ) => {
   await addDoc(collection(db, "trainingLessons"), {
     ...lesson,
+    contentMode: lesson.contentMode || "video",
+    slideType: lesson.slideType || "google-drive",
     hasQuiz: lesson.hasQuiz ?? false,
     quizRequired: lesson.quizRequired ?? false,
     quizPassScore: lesson.quizPassScore ?? 80,
@@ -520,11 +507,9 @@ export const duplicateTrainingProgram = async (programId: string) => {
     const courseRef = doc(collection(db, "trainingCourses"));
     courseIdMap.set(course.id, courseRef.id);
 
-    const nextLevelId = course.levelId ? levelIdMap.get(course.levelId) : "";
-
     batch.set(courseRef, {
       programId: copyId,
-      levelId: nextLevelId || "",
+      levelId: levelIdMap.get(course.levelId || "") || "",
       title: course.title,
       description: course.description || "",
       status: "draft",
@@ -535,24 +520,22 @@ export const duplicateTrainingProgram = async (programId: string) => {
   });
 
   lessons.forEach((lesson) => {
-    const nextCourseId = courseIdMap.get(lesson.courseId);
-    const nextLevelId = lesson.levelId ? levelIdMap.get(lesson.levelId) : "";
-
-    if (!nextCourseId) return;
-
     const lessonRef = doc(collection(db, "trainingLessons"));
 
     batch.set(lessonRef, {
       programId: copyId,
-      levelId: nextLevelId || "",
-      courseId: nextCourseId,
+      levelId: levelIdMap.get(lesson.levelId || "") || "",
+      courseId: courseIdMap.get(lesson.courseId) || "",
       title: lesson.title,
       description: lesson.description || "",
+      contentMode: lesson.contentMode || "video",
       videoUrl: lesson.videoUrl || "",
       videoType: lesson.videoType || "youtube",
+      slideUrl: lesson.slideUrl || "",
+      slideType: lesson.slideType || "google-drive",
       duration: lesson.duration || "",
       materials: lesson.materials || [],
-      allowComments: lesson.allowComments ?? false,
+      allowComments: lesson.allowComments ?? true,
       requireCompletion: lesson.requireCompletion ?? true,
       hasQuiz: lesson.hasQuiz ?? false,
       quizRequired: lesson.quizRequired ?? false,
@@ -574,6 +557,4 @@ export const duplicateTrainingProgram = async (programId: string) => {
     status: "draft",
     order: (program.order || 0) + 1,
   });
-
-  return copyId;
 };
