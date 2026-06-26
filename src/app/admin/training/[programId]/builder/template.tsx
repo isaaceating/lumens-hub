@@ -49,7 +49,7 @@ export default function BuilderTemplate({ children }: { children: ReactNode }) {
           "beforeend",
           `
             <a class="inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100" href="/admin/training/${programId}/builder/materials?lessonId=${lessonId}">${pencilIcon} Materials</a>
-            <button type="button" disabled class="inline-flex cursor-not-allowed items-center gap-1 rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-400">${pencilIcon} Quiz</button>
+            <a class="inline-flex items-center gap-1 rounded-lg bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-700 hover:bg-purple-100" href="/admin/training/${programId}/builder/quiz?lessonId=${lessonId}">${pencilIcon} Quiz</a>
           `
         );
 
