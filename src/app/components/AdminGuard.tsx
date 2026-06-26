@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { signInWithGoogle } from "@/lib/auth";
 import { useUserProfile } from "@/lib/useUserProfile";
@@ -11,7 +12,17 @@ type AdminGuardProps = {
   module?: AdminModuleKey;
 };
 
+const getAdminModuleFromPath = (pathname: string): AdminModuleKey | undefined => {
+  if (pathname.startsWith("/admin/users")) return "users";
+  if (pathname.startsWith("/admin/modules")) return "modules";
+  if (pathname.startsWith("/admin/news")) return "news";
+  if (pathname.startsWith("/admin/training")) return "training";
+  return undefined;
+};
+
 export default function AdminGuard({ children, module }: AdminGuardProps) {
+  const pathname = usePathname();
+  const requiredModule = module || getAdminModuleFromPath(pathname);
   const { user, profile, loading } = useUserProfile();
   const [signingIn, setSigningIn] = useState(false);
 
@@ -51,8 +62,8 @@ export default function AdminGuard({ children, module }: AdminGuardProps) {
     );
   }
 
-  if (!canAccessAdminModule(profile, module)) {
-    const moduleLabel = module ? adminModuleLabels[module] : "Admin";
+  if (!canAccessAdminModule(profile, requiredModule)) {
+    const moduleLabel = requiredModule ? adminModuleLabels[requiredModule] : "Admin";
 
     return (
       <div className="mx-auto max-w-xl rounded-2xl border border-red-200 bg-red-50 p-8 text-center shadow-sm">
