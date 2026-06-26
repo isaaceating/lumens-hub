@@ -63,6 +63,7 @@ export const updateUserProfile = async (
     customJobRole?: string;
 
     enabledModules?: string[];
+    adminModules?: string[];
     enabledDashboardSections?: string[];
 
     knowledgeCenterAuditEnabled?: boolean;
