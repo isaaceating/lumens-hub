@@ -2,14 +2,21 @@
 
 import { Pencil, Plus, Save } from "lucide-react";
 import type { ChangeEvent, FormEvent } from "react";
-import type { TrainingStatus } from "@/lib/training";
+import type {
+  TrainingLessonContentMode,
+  TrainingLessonSlideType,
+  TrainingStatus,
+} from "@/lib/training";
 
 export type LessonEditorFormValues = {
   courseId: string;
   title: string;
   description: string;
+  contentMode: TrainingLessonContentMode;
   videoUrl: string;
   videoType: string;
+  slideUrl: string;
+  slideType: TrainingLessonSlideType;
   duration: string;
   status: TrainingStatus;
   order: number | "";
@@ -32,9 +39,19 @@ type LessonEditorFormProps = {
   onCancel: () => void;
 };
 
+const contentModeOptions: { value: TrainingLessonContentMode; label: string }[] = [
+  { value: "video", label: "Video Lesson" },
+  { value: "slides", label: "Slide Lesson" },
+];
+
 const videoTypeOptions = [
   { value: "youtube", label: "YouTube" },
   { value: "google-drive", label: "Google Drive" },
+];
+
+const slideTypeOptions: { value: TrainingLessonSlideType; label: string }[] = [
+  { value: "google-slides", label: "Google Slides" },
+  { value: "google-drive", label: "Google Drive Preview" },
 ];
 
 export default function LessonEditorForm({
@@ -48,6 +65,7 @@ export default function LessonEditorForm({
   onSubmit,
   onCancel,
 }: LessonEditorFormProps) {
+  const contentMode = form.contentMode || "video";
   const hasCustomVideoType =
     form.videoType && !videoTypeOptions.some((option) => option.value === form.videoType);
 
@@ -93,19 +111,50 @@ export default function LessonEditorForm({
           <input name="duration" value={form.duration} onChange={onChange} placeholder="12 min" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">Video Type</label>
-          <select name="videoType" value={form.videoType || "youtube"} onChange={onChange} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50">
-            {videoTypeOptions.map((option) => (
+          <label className="mb-2 block text-sm font-medium text-slate-700">Content Mode</label>
+          <select name="contentMode" value={contentMode} onChange={onChange} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50">
+            {contentModeOptions.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
-            {hasCustomVideoType && <option value={form.videoType}>{form.videoType}</option>}
           </select>
-          <p className="mt-1 text-xs text-slate-500">YouTube and Google Drive videos are embedded on the lesson page when the link format is supported.</p>
+          <p className="mt-1 text-xs text-slate-500">Choose video teaching or slide reading mode for this lesson.</p>
         </div>
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">Video URL</label>
-          <input name="videoUrl" value={form.videoUrl} onChange={onChange} placeholder="https://..." className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
-        </div>
+
+        {contentMode === "video" ? (
+          <>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Video Type</label>
+              <select name="videoType" value={form.videoType || "youtube"} onChange={onChange} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50">
+                {videoTypeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+                {hasCustomVideoType && <option value={form.videoType}>{form.videoType}</option>}
+              </select>
+              <p className="mt-1 text-xs text-slate-500">YouTube and Google Drive videos are embedded on the lesson page when the link format is supported.</p>
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Video URL</label>
+              <input name="videoUrl" value={form.videoUrl} onChange={onChange} placeholder="https://..." className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Slide Type</label>
+              <select name="slideType" value={form.slideType || "google-drive"} onChange={onChange} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50">
+                {slideTypeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-slate-500">Use Google Slides for native Slides links. Use Google Drive Preview for pptx, pdf, or Drive preview files.</p>
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Slide URL</label>
+              <input name="slideUrl" value={form.slideUrl} onChange={onChange} placeholder="https://docs.google.com/presentation/... or https://drive.google.com/..." className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
+            </div>
+          </>
+        )}
+
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-700">Description</label>
           <textarea name="description" value={form.description} onChange={onChange} rows={4} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
