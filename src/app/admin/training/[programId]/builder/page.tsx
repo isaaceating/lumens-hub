@@ -45,8 +45,14 @@ import {
   type TrainingStatus,
 } from "@/lib/training";
 import BuilderPage from "../page";
+import LessonsTabLayout from "./components/LessonsTabLayout";
 
-type BuilderTabId = "program" | "sections" | "courses" | "lessons" | "structure";
+type BuilderTabId =
+  | "program"
+  | "sections"
+  | "courses"
+  | "lessons"
+  | "structure";
 
 type OrderedItem = {
   order?: number;
@@ -143,8 +149,10 @@ const workflowSteps: {
 ];
 
 const getStatusClass = (status: TrainingStatus) => {
-  if (status === "published") return "bg-emerald-100 text-emerald-700 ring-emerald-100";
-  if (status === "archived") return "bg-amber-100 text-amber-700 ring-amber-100";
+  if (status === "published")
+    return "bg-emerald-100 text-emerald-700 ring-emerald-100";
+  if (status === "archived")
+    return "bg-amber-100 text-amber-700 ring-amber-100";
   return "bg-slate-100 text-slate-600 ring-slate-200";
 };
 
@@ -192,25 +200,35 @@ export default function AdvancedTrainingBuilderRoute() {
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
   const [lessonForm, setLessonForm] = useState(emptyLessonForm);
 
-  const activeStep = workflowSteps.find((step) => step.id === activeTab) || workflowSteps[0];
+  const activeStep =
+    workflowSteps.find((step) => step.id === activeTab) || workflowSteps[0];
   const ActiveIcon = activeStep.icon;
   const programTag = programForm.title.trim() || programId;
 
   const getSectionTitle = (levelId?: string) =>
-    !levelId ? "Unassigned" : sections.find((section) => section.id === levelId)?.title || "Unknown section";
+    !levelId
+      ? "Unassigned"
+      : sections.find((section) => section.id === levelId)?.title ||
+        "Unknown section";
 
   const getSectionOrder = (levelId?: string) =>
     !levelId
       ? Number.MAX_SAFE_INTEGER
-      : sections.find((section) => section.id === levelId)?.order ?? Number.MAX_SAFE_INTEGER - 1;
+      : (sections.find((section) => section.id === levelId)?.order ??
+        Number.MAX_SAFE_INTEGER - 1);
 
-  const getCourse = (courseId?: string) => courses.find((course) => course.id === courseId);
-  const getCourseTitle = (courseId?: string) => getCourse(courseId)?.title || "Unknown course";
-  const getCourseOrder = (courseId?: string) => getCourse(courseId)?.order ?? Number.MAX_SAFE_INTEGER;
-  const getCourseSectionId = (courseId?: string) => getCourse(courseId)?.levelId || "";
+  const getCourse = (courseId?: string) =>
+    courses.find((course) => course.id === courseId);
+  const getCourseTitle = (courseId?: string) =>
+    getCourse(courseId)?.title || "Unknown course";
+  const getCourseOrder = (courseId?: string) =>
+    getCourse(courseId)?.order ?? Number.MAX_SAFE_INTEGER;
+  const getCourseSectionId = (courseId?: string) =>
+    getCourse(courseId)?.levelId || "";
 
   const sortedCourses = [...courses].sort((a, b) => {
-    const sectionOrderDiff = getSectionOrder(a.levelId) - getSectionOrder(b.levelId);
+    const sectionOrderDiff =
+      getSectionOrder(a.levelId) - getSectionOrder(b.levelId);
     if (sectionOrderDiff !== 0) return sectionOrderDiff;
 
     const courseOrderDiff = (a.order || 0) - (b.order || 0);
@@ -220,10 +238,13 @@ export default function AdvancedTrainingBuilderRoute() {
   });
 
   const sortedLessons = [...lessons].sort((a, b) => {
-    const sectionOrderDiff = getSectionOrder(getCourseSectionId(a.courseId)) - getSectionOrder(getCourseSectionId(b.courseId));
+    const sectionOrderDiff =
+      getSectionOrder(getCourseSectionId(a.courseId)) -
+      getSectionOrder(getCourseSectionId(b.courseId));
     if (sectionOrderDiff !== 0) return sectionOrderDiff;
 
-    const courseOrderDiff = getCourseOrder(a.courseId) - getCourseOrder(b.courseId);
+    const courseOrderDiff =
+      getCourseOrder(a.courseId) - getCourseOrder(b.courseId);
     if (courseOrderDiff !== 0) return courseOrderDiff;
 
     const lessonOrderDiff = (a.order || 0) - (b.order || 0);
@@ -279,7 +300,8 @@ export default function AdvancedTrainingBuilderRoute() {
     try {
       const data = await getTrainingLevelsByProgram(programId);
       setSections(data);
-      if (!editingSectionId) setSectionForm((prev) => ({ ...prev, order: data.length + 1 }));
+      if (!editingSectionId)
+        setSectionForm((prev) => ({ ...prev, order: data.length + 1 }));
     } catch (error) {
       console.error("Failed to load sections:", error);
       setSectionMessage("Failed to load sections.");
@@ -294,7 +316,8 @@ export default function AdvancedTrainingBuilderRoute() {
     try {
       const data = await getTrainingCoursesByProgram(programId);
       setCourses(data);
-      if (!editingCourseId) setCourseForm((prev) => ({ ...prev, order: data.length + 1 }));
+      if (!editingCourseId)
+        setCourseForm((prev) => ({ ...prev, order: data.length + 1 }));
     } catch (error) {
       console.error("Failed to load courses:", error);
       setCourseMessage("Failed to load courses.");
@@ -309,7 +332,8 @@ export default function AdvancedTrainingBuilderRoute() {
     try {
       const data = await getTrainingLessonsByProgram(programId);
       setLessons(data);
-      if (!editingLessonId) setLessonForm((prev) => ({ ...prev, order: data.length + 1 }));
+      if (!editingLessonId)
+        setLessonForm((prev) => ({ ...prev, order: data.length + 1 }));
     } catch (error) {
       console.error("Failed to load lessons:", error);
       setLessonMessage("Failed to load lessons.");
@@ -319,14 +343,23 @@ export default function AdvancedTrainingBuilderRoute() {
   };
 
   const refreshAll = async () => {
-    await Promise.all([fetchProgram(), fetchSections(), fetchCourses(), fetchLessons()]);
+    await Promise.all([
+      fetchProgram(),
+      fetchSections(),
+      fetchCourses(),
+      fetchLessons(),
+    ]);
   };
 
   useEffect(() => {
     refreshAll();
   }, [programId]);
 
-  const handleProgramChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleProgramChange = (
+    event: ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
+  ) => {
     const { name, value } = event.target;
     setProgramMessage("");
     setProgramForm((prev) => ({
@@ -335,7 +368,11 @@ export default function AdvancedTrainingBuilderRoute() {
     }));
   };
 
-  const handleSectionChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleSectionChange = (
+    event: ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
+  ) => {
     const { name, value } = event.target;
     setSectionMessage("");
     setSectionForm((prev) => ({
@@ -344,7 +381,11 @@ export default function AdvancedTrainingBuilderRoute() {
     }));
   };
 
-  const handleCourseChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleCourseChange = (
+    event: ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
+  ) => {
     const { name, value } = event.target;
     setCourseMessage("");
     setCourseForm((prev) => ({
@@ -353,7 +394,11 @@ export default function AdvancedTrainingBuilderRoute() {
     }));
   };
 
-  const handleLessonChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleLessonChange = (
+    event: ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
+  ) => {
     const { name, value } = event.target;
     setLessonMessage("");
     setLessonForm((prev) => ({
@@ -370,13 +415,21 @@ export default function AdvancedTrainingBuilderRoute() {
 
   const resetCourseForm = () => {
     setEditingCourseId(null);
-    setCourseForm({ ...emptyCourseForm, levelId: sections[0]?.id || "", order: courses.length + 1 });
+    setCourseForm({
+      ...emptyCourseForm,
+      levelId: sections[0]?.id || "",
+      order: courses.length + 1,
+    });
     setCourseMessage("");
   };
 
   const resetLessonForm = () => {
     setEditingLessonId(null);
-    setLessonForm({ ...emptyLessonForm, courseId: sortedCourses[0]?.id || "", order: lessons.length + 1 });
+    setLessonForm({
+      ...emptyLessonForm,
+      courseId: sortedCourses[0]?.id || "",
+      order: lessons.length + 1,
+    });
     setLessonMessage("");
   };
 
@@ -579,50 +632,120 @@ export default function AdvancedTrainingBuilderRoute() {
             <Settings2 size={20} />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Program Settings</h2>
-            <p className="mt-1 text-sm text-slate-500">Edit the program-level metadata that controls the frontend training module.</p>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Program Settings
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Edit the program-level metadata that controls the frontend
+              training module.
+            </p>
           </div>
         </div>
-        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClass(programForm.status)}`}>
+        <span
+          className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClass(programForm.status)}`}
+        >
           {programForm.status}
         </span>
       </div>
 
       {loadingProgram ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">Loading program settings...</div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
+          Loading program settings...
+        </div>
       ) : (
-        <form onSubmit={handleProgramSave} className="grid gap-5 md:grid-cols-2">
+        <form
+          onSubmit={handleProgramSave}
+          className="grid gap-5 md:grid-cols-2"
+        >
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Program ID</label>
-            <input value={programId} disabled className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 font-mono text-sm text-slate-500" />
-            <p className="mt-1 text-xs text-slate-500">Program ID cannot be changed.</p>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Program ID
+            </label>
+            <input
+              value={programId}
+              disabled
+              className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 font-mono text-sm text-slate-500"
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Program ID cannot be changed.
+            </p>
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Title</label>
-            <input name="title" value={programForm.title} onChange={handleProgramChange} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Title
+            </label>
+            <input
+              name="title"
+              value={programForm.title}
+              onChange={handleProgramChange}
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+            />
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Owner Department</label>
-            <input name="ownerDepartment" value={programForm.ownerDepartment} onChange={handleProgramChange} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Owner Department
+            </label>
+            <input
+              name="ownerDepartment"
+              value={programForm.ownerDepartment}
+              onChange={handleProgramChange}
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+            />
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Status</label>
-            <select name="status" value={programForm.status} onChange={handleProgramChange} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50">
-              {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Status
+            </label>
+            <select
+              name="status"
+              value={programForm.status}
+              onChange={handleProgramChange}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+            >
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
             </select>
-            <p className="mt-1 text-xs text-slate-500">Published programs appear as native training modules.</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Published programs appear as native training modules.
+            </p>
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Order</label>
-            <input name="order" type="number" value={programForm.order} onChange={handleProgramChange} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Order
+            </label>
+            <input
+              name="order"
+              type="number"
+              value={programForm.order}
+              onChange={handleProgramChange}
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+            />
           </div>
           <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-medium text-slate-700">Description</label>
-            <textarea name="description" value={programForm.description} onChange={handleProgramChange} rows={5} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Description
+            </label>
+            <textarea
+              name="description"
+              value={programForm.description}
+              onChange={handleProgramChange}
+              rows={5}
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+            />
           </div>
           <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-            <div className="text-sm text-slate-500">{programMessage || "Save here to update the program and synced native module."}</div>
-            <button type="submit" disabled={savingProgram} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:bg-slate-400">
+            <div className="text-sm text-slate-500">
+              {programMessage ||
+                "Save here to update the program and synced native module."}
+            </div>
+            <button
+              type="submit"
+              disabled={savingProgram}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:bg-slate-400"
+            >
               <Save size={16} /> {savingProgram ? "Saving..." : "Save Program"}
             </button>
           </div>
@@ -639,36 +762,95 @@ export default function AdvancedTrainingBuilderRoute() {
             {editingSectionId ? <Pencil size={20} /> : <Plus size={20} />}
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">{editingSectionId ? "Edit Section" : "Add Section"}</h2>
-            <p className="mt-1 text-sm text-slate-500">Sections are the top-level chapters or phases inside this training program.</p>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {editingSectionId ? "Edit Section" : "Add Section"}
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Sections are the top-level chapters or phases inside this training
+              program.
+            </p>
           </div>
         </div>
 
         <form onSubmit={handleSectionSave} className="space-y-4">
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Section Title</label>
-            <input name="title" value={sectionForm.title} onChange={handleSectionChange} placeholder="Level 1 · Foundation" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Section Title
+            </label>
+            <input
+              name="title"
+              value={sectionForm.title}
+              onChange={handleSectionChange}
+              placeholder="Level 1 · Foundation"
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+            />
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Status</label>
-            <select name="status" value={sectionForm.status} onChange={handleSectionChange} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50">
-              {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Status
+            </label>
+            <select
+              name="status"
+              value={sectionForm.status}
+              onChange={handleSectionChange}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+            >
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
             </select>
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Order</label>
-            <input name="order" type="number" value={sectionForm.order} onChange={handleSectionChange} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Order
+            </label>
+            <input
+              name="order"
+              type="number"
+              value={sectionForm.order}
+              onChange={handleSectionChange}
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+            />
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Description</label>
-            <textarea name="description" value={sectionForm.description} onChange={handleSectionChange} rows={4} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Description
+            </label>
+            <textarea
+              name="description"
+              value={sectionForm.description}
+              onChange={handleSectionChange}
+              rows={4}
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+            />
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-            <div className="text-sm text-slate-500">{sectionMessage || "Create or update section metadata here."}</div>
+            <div className="text-sm text-slate-500">
+              {sectionMessage || "Create or update section metadata here."}
+            </div>
             <div className="flex gap-2">
-              {editingSectionId && <button type="button" onClick={resetSectionForm} className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200">Cancel</button>}
-              <button type="submit" disabled={savingSection} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:bg-slate-400">
-                <Save size={16} /> {savingSection ? "Saving..." : editingSectionId ? "Update Section" : "Create Section"}
+              {editingSectionId && (
+                <button
+                  type="button"
+                  onClick={resetSectionForm}
+                  className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200"
+                >
+                  Cancel
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={savingSection}
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:bg-slate-400"
+              >
+                <Save size={16} />{" "}
+                {savingSection
+                  ? "Saving..."
+                  : editingSectionId
+                    ? "Update Section"
+                    : "Create Section"}
               </button>
             </div>
           </div>
@@ -678,30 +860,63 @@ export default function AdvancedTrainingBuilderRoute() {
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Section List</h2>
-            <p className="mt-1 text-sm text-slate-500">Showing {sections.length} sections in this program.</p>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Section List
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Showing {sections.length} sections in this program.
+            </p>
           </div>
-          <button type="button" onClick={fetchSections} className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200">Refresh</button>
+          <button
+            type="button"
+            onClick={fetchSections}
+            className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200"
+          >
+            Refresh
+          </button>
         </div>
 
         {loadingSections ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">Loading sections...</div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
+            Loading sections...
+          </div>
         ) : sections.length > 0 ? (
           <div className="space-y-3">
             {sections.map((section) => (
-              <div key={section.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div
+                key={section.id}
+                className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+              >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">{programTag}</span>
-                      <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">Section Order {section.order || 0}</span>
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClass(section.status)}`}>{section.status}</span>
+                      <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">
+                        {programTag}
+                      </span>
+                      <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                        Section Order {section.order || 0}
+                      </span>
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClass(section.status)}`}
+                      >
+                        {section.status}
+                      </span>
                     </div>
-                    <h3 className="mt-3 font-semibold text-slate-900">{section.title}</h3>
-                    <p className="mt-1 text-sm leading-6 text-slate-500">{section.description || "No description."}</p>
-                    <p className="mt-2 font-mono text-xs text-slate-400">{section.id}</p>
+                    <h3 className="mt-3 font-semibold text-slate-900">
+                      {section.title}
+                    </h3>
+                    <p className="mt-1 text-sm leading-6 text-slate-500">
+                      {section.description || "No description."}
+                    </p>
+                    <p className="mt-2 font-mono text-xs text-slate-400">
+                      {section.id}
+                    </p>
                   </div>
-                  <button type="button" onClick={() => startEditSection(section)} className="inline-flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100">
+                  <button
+                    type="button"
+                    onClick={() => startEditSection(section)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                  >
                     <Pencil size={15} /> Edit
                   </button>
                 </div>
@@ -709,7 +924,9 @@ export default function AdvancedTrainingBuilderRoute() {
             ))}
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">No sections yet. Create the first section from the form on the left.</div>
+          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">
+            No sections yet. Create the first section from the form on the left.
+          </div>
         )}
       </div>
     </section>
@@ -723,44 +940,115 @@ export default function AdvancedTrainingBuilderRoute() {
             {editingCourseId ? <Pencil size={20} /> : <Plus size={20} />}
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">{editingCourseId ? "Edit Course" : "Add Course"}</h2>
-            <p className="mt-1 text-sm text-slate-500">Courses group lessons under a section.</p>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {editingCourseId ? "Edit Course" : "Add Course"}
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Courses group lessons under a section.
+            </p>
           </div>
         </div>
 
         <form onSubmit={handleCourseSave} className="space-y-4">
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Parent Section</label>
-            <select name="levelId" value={courseForm.levelId} onChange={handleCourseChange} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50">
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Parent Section
+            </label>
+            <select
+              name="levelId"
+              value={courseForm.levelId}
+              onChange={handleCourseChange}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+            >
               <option value="">Unassigned</option>
-              {sections.map((section) => <option key={section.id} value={section.id}>{section.title}</option>)}
+              {sections.map((section) => (
+                <option key={section.id} value={section.id}>
+                  {section.title}
+                </option>
+              ))}
             </select>
-            <p className="mt-1 text-xs text-slate-500">Create sections first if this list is empty.</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Create sections first if this list is empty.
+            </p>
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Course Title</label>
-            <input name="title" value={courseForm.title} onChange={handleCourseChange} placeholder="Course 1 · Product Basics" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Course Title
+            </label>
+            <input
+              name="title"
+              value={courseForm.title}
+              onChange={handleCourseChange}
+              placeholder="Course 1 · Product Basics"
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+            />
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Status</label>
-            <select name="status" value={courseForm.status} onChange={handleCourseChange} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50">
-              {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Status
+            </label>
+            <select
+              name="status"
+              value={courseForm.status}
+              onChange={handleCourseChange}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+            >
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
             </select>
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Order</label>
-            <input name="order" type="number" value={courseForm.order} onChange={handleCourseChange} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Order
+            </label>
+            <input
+              name="order"
+              type="number"
+              value={courseForm.order}
+              onChange={handleCourseChange}
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+            />
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Description</label>
-            <textarea name="description" value={courseForm.description} onChange={handleCourseChange} rows={4} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Description
+            </label>
+            <textarea
+              name="description"
+              value={courseForm.description}
+              onChange={handleCourseChange}
+              rows={4}
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+            />
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-            <div className="text-sm text-slate-500">{courseMessage || "Create or update course metadata here."}</div>
+            <div className="text-sm text-slate-500">
+              {courseMessage || "Create or update course metadata here."}
+            </div>
             <div className="flex gap-2">
-              {editingCourseId && <button type="button" onClick={resetCourseForm} className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200">Cancel</button>}
-              <button type="submit" disabled={savingCourse} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:bg-slate-400">
-                <Save size={16} /> {savingCourse ? "Saving..." : editingCourseId ? "Update Course" : "Create Course"}
+              {editingCourseId && (
+                <button
+                  type="button"
+                  onClick={resetCourseForm}
+                  className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200"
+                >
+                  Cancel
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={savingCourse}
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:bg-slate-400"
+              >
+                <Save size={16} />{" "}
+                {savingCourse
+                  ? "Saving..."
+                  : editingCourseId
+                    ? "Update Course"
+                    : "Create Course"}
               </button>
             </div>
           </div>
@@ -770,31 +1058,67 @@ export default function AdvancedTrainingBuilderRoute() {
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Course List</h2>
-            <p className="mt-1 text-sm text-slate-500">Showing {courses.length} courses by Section order, then Course order.</p>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Course List
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Showing {courses.length} courses by Section order, then Course
+              order.
+            </p>
           </div>
-          <button type="button" onClick={fetchCourses} className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200">Refresh</button>
+          <button
+            type="button"
+            onClick={fetchCourses}
+            className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200"
+          >
+            Refresh
+          </button>
         </div>
 
         {loadingCourses ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">Loading courses...</div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
+            Loading courses...
+          </div>
         ) : sortedCourses.length > 0 ? (
           <div className="space-y-3">
             {sortedCourses.map((course) => (
-              <div key={course.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div
+                key={course.id}
+                className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+              >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">{programTag}</span>
-                      <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">{getSectionTitle(course.levelId)}</span>
-                      <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">Course Order {course.order || 0}</span>
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClass(course.status)}`}>{course.status}</span>
+                      <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">
+                        {programTag}
+                      </span>
+                      <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                        {getSectionTitle(course.levelId)}
+                      </span>
+                      <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                        Course Order {course.order || 0}
+                      </span>
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClass(course.status)}`}
+                      >
+                        {course.status}
+                      </span>
                     </div>
-                    <h3 className="mt-3 font-semibold text-slate-900">{course.title}</h3>
-                    <p className="mt-1 text-sm leading-6 text-slate-500">{course.description || "No description."}</p>
-                    <p className="mt-2 font-mono text-xs text-slate-400">{course.id}</p>
+                    <h3 className="mt-3 font-semibold text-slate-900">
+                      {course.title}
+                    </h3>
+                    <p className="mt-1 text-sm leading-6 text-slate-500">
+                      {course.description || "No description."}
+                    </p>
+                    <p className="mt-2 font-mono text-xs text-slate-400">
+                      {course.id}
+                    </p>
                   </div>
-                  <button type="button" onClick={() => startEditCourse(course)} className="inline-flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100">
+                  <button
+                    type="button"
+                    onClick={() => startEditCourse(course)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                  >
                     <Pencil size={15} /> Edit
                   </button>
                 </div>
@@ -802,129 +1126,51 @@ export default function AdvancedTrainingBuilderRoute() {
             ))}
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">No courses yet. Create the first course from the form on the left.</div>
+          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">
+            No courses yet. Create the first course from the form on the left.
+          </div>
         )}
       </div>
     </section>
   );
 
   const renderLessonsPanel = () => (
-    <section className="grid gap-6 lg:grid-cols-[420px_1fr]">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="mb-5 flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 ring-1 ring-blue-100">
-            {editingLessonId ? <Pencil size={20} /> : <Plus size={20} />}
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">{editingLessonId ? "Edit Lesson" : "Add Lesson"}</h2>
-            <p className="mt-1 text-sm text-slate-500">This tab handles basic lesson information. Materials and quizzes stay in the legacy editor for now.</p>
-          </div>
-        </div>
-
-        <form onSubmit={handleLessonSave} className="space-y-4">
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Parent Course</label>
-            <select name="courseId" value={lessonForm.courseId} onChange={handleLessonChange} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50">
-              <option value="">Select course</option>
-              {sortedCourses.map((course) => <option key={course.id} value={course.id}>{getSectionTitle(course.levelId)} / {course.title}</option>)}
-            </select>
-            <p className="mt-1 text-xs text-slate-500">Create courses first if this list is empty.</p>
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Lesson Title</label>
-            <input name="title" value={lessonForm.title} onChange={handleLessonChange} placeholder="Lesson 1 · Overview" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Status</label>
-            <select name="status" value={lessonForm.status} onChange={handleLessonChange} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50">
-              {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Lesson Order</label>
-            <input name="order" type="number" value={lessonForm.order} onChange={handleLessonChange} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Duration</label>
-            <input name="duration" value={lessonForm.duration} onChange={handleLessonChange} placeholder="12 min" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Video Type</label>
-            <input name="videoType" value={lessonForm.videoType} onChange={handleLessonChange} placeholder="youtube" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Video URL</label>
-            <input name="videoUrl" value={lessonForm.videoUrl} onChange={handleLessonChange} placeholder="https://..." className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Description</label>
-            <textarea name="description" value={lessonForm.description} onChange={handleLessonChange} rows={4} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm leading-6 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-            <div className="text-sm text-slate-500">{lessonMessage || "Create or update lesson basic information here."}</div>
-            <div className="flex gap-2">
-              {editingLessonId && <button type="button" onClick={resetLessonForm} className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200">Cancel</button>}
-              <button type="submit" disabled={savingLesson} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:bg-slate-400">
-                <Save size={16} /> {savingLesson ? "Saving..." : editingLessonId ? "Update Lesson" : "Create Lesson"}
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">Lesson List</h2>
-            <p className="mt-1 text-sm text-slate-500">Showing {lessons.length} lessons by Section order, Course order, then Lesson order.</p>
-          </div>
-          <button type="button" onClick={fetchLessons} className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200">Refresh</button>
-        </div>
-
-        {loadingLessons ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">Loading lessons...</div>
-        ) : sortedLessons.length > 0 ? (
-          <div className="space-y-3">
-            {sortedLessons.map((lesson) => (
-              <div key={lesson.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">{programTag}</span>
-                      <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">{getSectionTitle(getCourseSectionId(lesson.courseId))}</span>
-                      <span className="rounded-full bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700">{getCourseTitle(lesson.courseId)}</span>
-                      <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">Lesson Order {lesson.order || 0}</span>
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClass(lesson.status)}`}>{lesson.status}</span>
-                    </div>
-                    <h3 className="mt-3 font-semibold text-slate-900">{lesson.title}</h3>
-                    <p className="mt-1 text-sm leading-6 text-slate-500">{lesson.description || "No description."}</p>
-                    <p className="mt-2 text-xs text-slate-500">{lesson.duration || "No duration"} · {lesson.videoType || "video"}</p>
-                    <p className="mt-2 font-mono text-xs text-slate-400">{lesson.id}</p>
-                  </div>
-                  <button type="button" onClick={() => startEditLesson(lesson)} className="inline-flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100">
-                    <Pencil size={15} /> Edit
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">No lessons yet. Create the first lesson from the form on the left.</div>
-        )}
-      </div>
-    </section>
+    <LessonsTabLayout
+      programId={programId}
+      sections={sections}
+      courses={sortedCourses}
+      lessons={lessons}
+      loading={loadingLessons}
+      editingId={editingLessonId}
+      saving={savingLesson}
+      message={lessonMessage}
+      form={lessonForm}
+      statuses={statusOptions}
+      onChange={handleLessonChange}
+      onSubmit={handleLessonSave}
+      onCancel={resetLessonForm}
+      onRefresh={fetchLessons}
+      onEdit={startEditLesson}
+    />
   );
 
   const renderStructurePanel = () => (
     <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">Learning Path Preview</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            Learning Path Preview
+          </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Manager preview includes draft, published, and archived items. Public preview only shows published content.
+            Manager preview includes draft, published, and archived items.
+            Public preview only shows published content.
           </p>
         </div>
-        <button type="button" onClick={refreshAll} className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200">
+        <button
+          type="button"
+          onClick={refreshAll}
+          className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200"
+        >
           Refresh
         </button>
       </div>
@@ -936,21 +1182,29 @@ export default function AdvancedTrainingBuilderRoute() {
         </div>
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="text-xs font-semibold text-slate-500">Sections</div>
-          <div className="mt-2 text-2xl font-bold text-slate-900">{sections.length}</div>
+          <div className="mt-2 text-2xl font-bold text-slate-900">
+            {sections.length}
+          </div>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="text-xs font-semibold text-slate-500">Courses</div>
-          <div className="mt-2 text-2xl font-bold text-slate-900">{courses.length}</div>
+          <div className="mt-2 text-2xl font-bold text-slate-900">
+            {courses.length}
+          </div>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="text-xs font-semibold text-slate-500">Lessons</div>
-          <div className="mt-2 text-2xl font-bold text-slate-900">{lessons.length}</div>
+          <div className="mt-2 text-2xl font-bold text-slate-900">
+            {lessons.length}
+          </div>
         </div>
       </div>
 
       <div className="space-y-6">
         {sortByOrder(sections).map((section, sectionIndex) => {
-          const sectionCourses = sortByOrder(coursesBySection.get(section.id) || []);
+          const sectionCourses = sortByOrder(
+            coursesBySection.get(section.id) || [],
+          );
 
           return (
             <div key={section.id} className="relative pl-16">
@@ -962,11 +1216,19 @@ export default function AdvancedTrainingBuilderRoute() {
               <div className="pb-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <div className="text-xs font-bold uppercase tracking-wide text-blue-700">SECTION {sectionIndex + 1}</div>
-                    <h3 className="mt-2 text-2xl font-bold text-slate-950">{section.title}</h3>
-                    <p className="mt-3 text-sm leading-6 text-slate-500">{section.description || "No section description."}</p>
+                    <div className="text-xs font-bold uppercase tracking-wide text-blue-700">
+                      SECTION {sectionIndex + 1}
+                    </div>
+                    <h3 className="mt-2 text-2xl font-bold text-slate-950">
+                      {section.title}
+                    </h3>
+                    <p className="mt-3 text-sm leading-6 text-slate-500">
+                      {section.description || "No section description."}
+                    </p>
                   </div>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClass(section.status)}`}>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClass(section.status)}`}
+                  >
                     {section.status}
                   </span>
                 </div>
@@ -975,19 +1237,32 @@ export default function AdvancedTrainingBuilderRoute() {
               <div className="space-y-4">
                 {sectionCourses.length > 0 ? (
                   sectionCourses.map((course, courseIndex) => {
-                    const courseLessons = sortByOrder(lessonsByCourse.get(course.id) || []);
+                    const courseLessons = sortByOrder(
+                      lessonsByCourse.get(course.id) || [],
+                    );
 
                     return (
-                      <div key={course.id} className="relative rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                      <div
+                        key={course.id}
+                        className="relative rounded-2xl border border-slate-200 bg-slate-50 p-5"
+                      >
                         <div className="absolute -left-[31px] top-8 h-2 w-2 rounded-full bg-blue-600 ring-4 ring-white" />
 
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
-                            <div className="text-xs font-bold uppercase tracking-wide text-blue-700">COURSE {courseIndex + 1}</div>
-                            <h4 className="mt-2 text-lg font-bold text-slate-950">{course.title}</h4>
-                            <p className="mt-3 text-sm leading-6 text-slate-500">{course.description || "No course description."}</p>
+                            <div className="text-xs font-bold uppercase tracking-wide text-blue-700">
+                              COURSE {courseIndex + 1}
+                            </div>
+                            <h4 className="mt-2 text-lg font-bold text-slate-950">
+                              {course.title}
+                            </h4>
+                            <p className="mt-3 text-sm leading-6 text-slate-500">
+                              {course.description || "No course description."}
+                            </p>
                           </div>
-                          <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClass(course.status)}`}>
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClass(course.status)}`}
+                          >
                             {course.status}
                           </span>
                         </div>
@@ -995,31 +1270,57 @@ export default function AdvancedTrainingBuilderRoute() {
                         <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
                           {courseLessons.length > 0 ? (
                             courseLessons.map((lesson, lessonIndex) => {
-                              const materialCount = lesson.materials?.length || 0;
+                              const materialCount =
+                                lesson.materials?.length || 0;
                               return (
-                                <div key={lesson.id} className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-4 py-4 last:border-b-0">
+                                <div
+                                  key={lesson.id}
+                                  className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-4 py-4 last:border-b-0"
+                                >
                                   <div className="flex items-start gap-4">
                                     <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                                      {lesson.status === "published" ? <Check size={15} /> : <PlayCircle size={15} />}
+                                      {lesson.status === "published" ? (
+                                        <Check size={15} />
+                                      ) : (
+                                        <PlayCircle size={15} />
+                                      )}
                                     </div>
                                     <div>
                                       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                                        <span className="font-bold text-blue-700">Lesson {lessonIndex + 1}</span>
-                                        {lesson.duration && <span>· {lesson.duration}</span>}
-                                        {materialCount > 0 && <span>· {materialCount} resources</span>}
+                                        <span className="font-bold text-blue-700">
+                                          Lesson {lessonIndex + 1}
+                                        </span>
+                                        {lesson.duration && (
+                                          <span>· {lesson.duration}</span>
+                                        )}
+                                        {materialCount > 0 && (
+                                          <span>
+                                            · {materialCount} resources
+                                          </span>
+                                        )}
                                       </div>
-                                      <div className="mt-1 font-bold text-slate-950">{lesson.title}</div>
-                                      {lesson.description && <p className="mt-2 text-sm leading-6 text-slate-500">{lesson.description}</p>}
+                                      <div className="mt-1 font-bold text-slate-950">
+                                        {lesson.title}
+                                      </div>
+                                      {lesson.description && (
+                                        <p className="mt-2 text-sm leading-6 text-slate-500">
+                                          {lesson.description}
+                                        </p>
+                                      )}
                                     </div>
                                   </div>
-                                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClass(lesson.status)}`}>
+                                  <span
+                                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClass(lesson.status)}`}
+                                  >
                                     {lesson.status}
                                   </span>
                                 </div>
                               );
                             })
                           ) : (
-                            <div className="px-4 py-5 text-sm text-slate-500">No lessons in this course.</div>
+                            <div className="px-4 py-5 text-sm text-slate-500">
+                              No lessons in this course.
+                            </div>
                           )}
                         </div>
                       </div>
@@ -1059,14 +1360,33 @@ export default function AdvancedTrainingBuilderRoute() {
         <div className="bg-gradient-to-r from-slate-950 to-indigo-800 p-6 text-white">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/15">Advanced Builder</div>
-              <h1 className="mt-3 text-2xl font-bold tracking-tight">Advanced Training Builder</h1>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-white/75">Build and edit the full training hierarchy: sections, courses, lessons, materials, and quizzes.</p>
-              <p className="mt-2 font-mono text-xs text-white/55">Program ID: {programId}</p>
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/15">
+                Advanced Builder
+              </div>
+              <h1 className="mt-3 text-2xl font-bold tracking-tight">
+                Advanced Training Builder
+              </h1>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-white/75">
+                Build and edit the full training hierarchy: sections, courses,
+                lessons, materials, and quizzes.
+              </p>
+              <p className="mt-2 font-mono text-xs text-white/55">
+                Program ID: {programId}
+              </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Link href={`/admin/training/${programId}/overview`} className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold text-white ring-1 ring-white/15 transition hover:bg-white/15"><ArrowLeft size={16} /> Manage</Link>
-              <Link href={`/training/${programId}`} className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"><Eye size={16} /> Preview</Link>
+              <Link
+                href={`/admin/training/${programId}/overview`}
+                className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold text-white ring-1 ring-white/15 transition hover:bg-white/15"
+              >
+                <ArrowLeft size={16} /> Manage
+              </Link>
+              <Link
+                href={`/training/${programId}`}
+                className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+              >
+                <Eye size={16} /> Preview
+              </Link>
             </div>
           </div>
         </div>
@@ -1075,11 +1395,21 @@ export default function AdvancedTrainingBuilderRoute() {
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-100"><Route size={14} /> Builder Workflow</div>
-            <h2 className="mt-3 text-lg font-semibold text-slate-900">Build from top to bottom</h2>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">Program, Sections, Courses, Lessons, and Structure are now live in the new builder. Advanced settings still use the legacy editor below.</p>
+            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-100">
+              <Route size={14} /> Builder Workflow
+            </div>
+            <h2 className="mt-3 text-lg font-semibold text-slate-900">
+              Build from top to bottom
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
+              Program, Sections, Courses, Lessons, and Structure are now live in
+              the new builder. Advanced settings still use the legacy editor
+              below.
+            </p>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100"><CheckCircle2 size={15} /> Core builder migrated</div>
+          <div className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
+            <CheckCircle2 size={15} /> Core builder migrated
+          </div>
         </div>
 
         <div className="mt-5 grid gap-3 md:grid-cols-5">
@@ -1087,10 +1417,23 @@ export default function AdvancedTrainingBuilderRoute() {
             const Icon = step.icon;
             const isActive = activeTab === step.id;
             return (
-              <button type="button" key={step.id} onClick={() => setActiveTab(step.id)} className={`rounded-2xl border p-4 text-left transition ${isActive ? "border-blue-200 bg-blue-50 shadow-sm ring-2 ring-blue-100" : "border-slate-200 bg-slate-50 hover:border-blue-100 hover:bg-blue-50/50"}`}>
-                <div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ${isActive ? "text-blue-700 ring-blue-100" : "text-slate-500 ring-slate-100"}`}><Icon size={17} /></div>
-                <div className="text-sm font-semibold text-slate-900">{step.title}</div>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{step.description}</p>
+              <button
+                type="button"
+                key={step.id}
+                onClick={() => setActiveTab(step.id)}
+                className={`rounded-2xl border p-4 text-left transition ${isActive ? "border-blue-200 bg-blue-50 shadow-sm ring-2 ring-blue-100" : "border-slate-200 bg-slate-50 hover:border-blue-100 hover:bg-blue-50/50"}`}
+              >
+                <div
+                  className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ${isActive ? "text-blue-700 ring-blue-100" : "text-slate-500 ring-slate-100"}`}
+                >
+                  <Icon size={17} />
+                </div>
+                <div className="text-sm font-semibold text-slate-900">
+                  {step.title}
+                </div>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  {step.description}
+                </p>
               </button>
             );
           })}
@@ -1100,14 +1443,24 @@ export default function AdvancedTrainingBuilderRoute() {
       <section className="rounded-2xl border border-blue-100 bg-blue-50 p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-blue-700 shadow-sm ring-1 ring-blue-100"><ActiveIcon size={20} /></div>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-blue-700 shadow-sm ring-1 ring-blue-100">
+              <ActiveIcon size={20} />
+            </div>
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">Active tab · {activeStep.status}</div>
-              <h2 className="mt-1 text-lg font-semibold text-slate-900">{activeStep.shortTitle}</h2>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">{activeStep.detail}</p>
+              <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                Active tab · {activeStep.status}
+              </div>
+              <h2 className="mt-1 text-lg font-semibold text-slate-900">
+                {activeStep.shortTitle}
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
+                {activeStep.detail}
+              </p>
             </div>
           </div>
-          <div className="rounded-xl bg-white px-3 py-2 font-mono text-xs text-slate-500 ring-1 ring-blue-100">/builder#{activeTab}</div>
+          <div className="rounded-xl bg-white px-3 py-2 font-mono text-xs text-slate-500 ring-1 ring-blue-100">
+            /builder#{activeTab}
+          </div>
         </div>
       </section>
 
@@ -1116,8 +1469,13 @@ export default function AdvancedTrainingBuilderRoute() {
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-sm font-semibold text-slate-700">Legacy advanced editor area</div>
-            <p className="mt-1 text-xs text-slate-500">Advanced controls remain here until materials and quiz are migrated.</p>
+            <div className="text-sm font-semibold text-slate-700">
+              Legacy advanced editor area
+            </div>
+            <p className="mt-1 text-xs text-slate-500">
+              Advanced controls remain here until materials and quiz are
+              migrated.
+            </p>
           </div>
         </div>
         <BuilderPage />
