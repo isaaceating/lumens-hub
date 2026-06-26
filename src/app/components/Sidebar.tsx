@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useUserProfile } from "@/lib/useUserProfile";
 import { getAllModules } from "@/lib/modules";
+import { getAdminModules, type AdminModuleKey } from "@/lib/adminPermissions";
 
 const getModuleHref = (module: any) => {
   if (module.moduleKind === "embedded") {
@@ -30,27 +31,37 @@ const getModuleHref = (module: any) => {
   return module.href || "#";
 };
 
-const adminNavItems = [
+const adminNavItems: {
+  id: string;
+  permission: AdminModuleKey;
+  name: string;
+  href: string;
+  icon: React.ElementType;
+}[] = [
   {
     id: "admin-users",
+    permission: "users",
     name: "Users",
     href: "/admin/users",
     icon: Users,
   },
   {
     id: "admin-modules",
+    permission: "modules",
     name: "Modules",
     href: "/admin/modules",
     icon: Boxes,
   },
   {
     id: "admin-news",
+    permission: "news",
     name: "News",
     href: "/admin/news",
     icon: Newspaper,
   },
   {
     id: "admin-training",
+    permission: "training",
     name: "Training",
     href: "/admin/training",
     icon: GraduationCap,
@@ -71,7 +82,11 @@ export default function Sidebar() {
   const [currentHash, setCurrentHash] = useState("");
 
   const enabledModules = profile?.enabledModules || [];
-  const isAdmin = profile?.role === "admin";
+  const adminModules = getAdminModules(profile);
+  const isAdmin = adminModules.length > 0;
+  const visibleAdminNavItems = adminNavItems.filter((item) =>
+    adminModules.includes(item.permission)
+  );
 
   useEffect(() => {
     const updateHash = () => {
@@ -486,7 +501,7 @@ export default function Sidebar() {
 
               {!collapsed && adminOpen && (
                 <div className="mt-1">
-                  {adminNavItems.map((item) => renderAdminItem(item))}
+                  {visibleAdminNavItems.map((item) => renderAdminItem(item))}
                 </div>
               )}
             </div>
