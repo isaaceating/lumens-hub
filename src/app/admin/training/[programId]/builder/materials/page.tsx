@@ -15,6 +15,12 @@ import {
   type TrainingLevel,
   type TrainingMaterial,
 } from "@/lib/training";
+import {
+  getCourseSectionId,
+  getCourseTitle,
+  getSectionTitle,
+  sortLessonsByHierarchy,
+} from "../components/lessonHierarchy";
 
 const materialTypeOptions = ["slides", "pdf", "doc", "video", "folder", "link"];
 
@@ -59,35 +65,10 @@ function MaterialsEditorContent() {
   const [selectedLessonId, setSelectedLessonId] = useState("");
   const [materials, setMaterials] = useState<TrainingMaterial[]>([createEmptyMaterial(1)]);
 
-  const getSectionOrder = (levelId?: string) => {
-    if (!levelId) return Number.MAX_SAFE_INTEGER;
-    return sections.find((section) => section.id === levelId)?.order ?? Number.MAX_SAFE_INTEGER - 1;
-  };
-
-  const getSectionTitle = (levelId?: string) => {
-    if (!levelId) return "Unassigned";
-    return sections.find((section) => section.id === levelId)?.title || "Unknown section";
-  };
-
-  const getCourse = (courseId?: string) => courses.find((course) => course.id === courseId);
-  const getCourseTitle = (courseId?: string) => getCourse(courseId)?.title || "Unknown course";
-  const getCourseOrder = (courseId?: string) => getCourse(courseId)?.order ?? Number.MAX_SAFE_INTEGER;
-  const getCourseSectionId = (courseId?: string) => getCourse(courseId)?.levelId || "";
-
-  const sortedLessons = useMemo(() => {
-    return [...lessons].sort((a, b) => {
-      const sectionOrderDiff = getSectionOrder(getCourseSectionId(a.courseId)) - getSectionOrder(getCourseSectionId(b.courseId));
-      if (sectionOrderDiff !== 0) return sectionOrderDiff;
-
-      const courseOrderDiff = getCourseOrder(a.courseId) - getCourseOrder(b.courseId);
-      if (courseOrderDiff !== 0) return courseOrderDiff;
-
-      const lessonOrderDiff = (a.order || 0) - (b.order || 0);
-      if (lessonOrderDiff !== 0) return lessonOrderDiff;
-
-      return (a.title || "").localeCompare(b.title || "");
-    });
-  }, [lessons, courses, sections]);
+  const sortedLessons = useMemo(
+    () => sortLessonsByHierarchy(lessons, courses, sections),
+    [lessons, courses, sections]
+  );
 
   const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId) || null;
 
@@ -254,7 +235,7 @@ function MaterialsEditorContent() {
             <option value="">Select lesson</option>
             {sortedLessons.map((lesson) => (
               <option key={lesson.id} value={lesson.id}>
-                {getSectionTitle(getCourseSectionId(lesson.courseId))} / {getCourseTitle(lesson.courseId)} / {lesson.title}
+                {getSectionTitle(sections, getCourseSectionId(courses, lesson.courseId))} / {getCourseTitle(courses, lesson.courseId)} / {lesson.title}
               </option>
             ))}
           </select>
@@ -262,9 +243,9 @@ function MaterialsEditorContent() {
           {selectedLesson && (
             <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                {getSectionTitle(getCourseSectionId(selectedLesson.courseId))}
+                {getSectionTitle(sections, getCourseSectionId(courses, selectedLesson.courseId))}
               </div>
-              <div className="mt-2 text-sm font-semibold text-slate-900">{getCourseTitle(selectedLesson.courseId)}</div>
+              <div className="mt-2 text-sm font-semibold text-slate-900">{getCourseTitle(courses, selectedLesson.courseId)}</div>
               <div className="mt-1 text-sm text-slate-600">{selectedLesson.title}</div>
               <div className="mt-3 text-xs text-slate-500">
                 Current materials: {selectedLesson.materials?.length || 0}
